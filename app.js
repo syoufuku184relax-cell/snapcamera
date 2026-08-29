@@ -310,3 +310,355 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('cheki_current_group', currentGroup);
         localStorage.setItem('cheki_idol_list', JSON.stringify(idolList));
         localStorage.setItem('cheki_active_idol_id', activeIdolId);
+    }
+
+    switchCameraBtn.addEventListener('click', () => {
+        useFrontCamera = !useFrontCamera;
+        flashOn = false;
+        flashBtn.classList.remove('active-tool');
+        startCamera();
+    });
+
+    flashBtn.addEventListener('click', async () => {
+        if (!currentStream) return;
+        const track = currentStream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+
+        if (!capabilities.torch) {
+            alert('このデバイス/カメラはフラッシュ機能に対応していません。');
+            return;
+        }
+
+        try {
+            flashOn = !flashOn;
+            await track.applyConstraints({
+                advanced: [{ torch: flashOn }]
+            });
+            if (flashOn) {
+                flashBtn.classList.add('active-tool');
+            } else {
+                flashBtn.classList.remove('active-tool');
+            }
+        } catch (err) {
+            console.error('フラッシュ切替エラー:', err);
+        }
+    });
+
+    timerBtn.addEventListener('click', () => {
+        if (timerSeconds === 0) {
+            timerSeconds = 3;
+            timerBadge.textContent = '3秒';
+            timerBtn.classList.add('active-tool');
+        } else if (timerSeconds === 3) {
+            timerSeconds = 5;
+            timerBadge.textContent = '5秒';
+        } else if (timerSeconds === 5) {
+            timerSeconds = 10;
+            timerBadge.textContent = '10秒';
+        } else {
+            timerSeconds = 0;
+            timerBadge.textContent = 'オフ';
+            timerBtn.classList.remove('active-tool');
+        }
+    });
+
+    // 2. 撮影処理 ➔ プレビューへ
+    function processCapture() {
+        const vWidth = videoElement.videoWidth || 640;
+        const vHeight = videoElement.videoHeight || 480;
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = vWidth;
+        tempCanvas.height = vHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        if (useFrontCamera) {
+            tempCtx.translate(vWidth, 0);
+            tempCtx.scale(-1, 1);
+        }
+        tempCtx.drawImage(videoElement, 0, 0, vWidth, vHeight);
+
+        capturedImageObj = new Image();
+        capturedImageObj.onload = () => {
+            previewImg.src = tempCanvas.toDataURL('image/png');
+            cameraContainer.classList.remove('active');
+            previewContainer.classList.add('active');
+        };
+        capturedImageObj.src = tempCanvas.toDataURL('image/png');
+    }
+
+    captureBtn.addEventListener('click', () => {
+        if (isCountingDown) return;
+
+        if (timerSeconds === 0) {
+            processCapture();
+        } else {
+            isCountingDown = true;
+            captureBtn.disabled = true;
+            let remaining = timerSeconds;
+            countdownOverlay.textContent = remaining;
+
+            const countdownInterval = setInterval(() => {
+                remaining--;
+                if (remaining > 0) {
+                    countdownOverlay.textContent = remaining;
+                } else {
+                    clearInterval(countdownInterval);
+                    countdownOverlay.textContent = '';
+                    isCountingDown = false;
+                    captureBtn.disabled = false;
+                    processCapture();
+                }
+            }, 1000);
+        }
+    });
+
+    previewRetakeBtn.addEventListener('click', () => {
+        previewContainer.classList.remove('active');
+        cameraContainer.classList.add('active');
+        startCamera();
+    });
+
+    previewOkBtn.addEventListener('click', () => {
+        canvas.width = 1080;
+        canvas.height = 1920;
+        redrawCanvas();
+
+        const dataURL = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        const active = getActiveIdol();
+        const safeGroup = active.group ? `${active.group}_` : '';
+        const safeIdol = active.idol ? `${active.idol}_` : '';
+        link.download = `cheki_${safeGroup}${safeIdol}${Date.now()}.png`;
+        link.href = dataURL;
+        link.click();
+
+        previewContainer.classList.remove('active');
+        editorContainer.classList.add('active');
+    });
+
+    function redrawCanvas() {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (capturedImageObj) {
+            const frameLeft = 60;
+            const frameTop = 120;
+            const frameRight = 60;
+            const frameBottom = 350;
+
+            const targetWidth = canvas.width - (frameLeft + frameRight);
+            const targetHeight = canvas.height - (frameTop + frameBottom);
+
+            const imgAspect = capturedImageObj.width / capturedImageObj.height;
+            const targetAspect = targetWidth / targetHeight;
+
+            let dWidth, dHeight, dx, dy;
+
+            if (imgAspect > targetAspect) {
+                dWidth = targetWidth;
+                dHeight = targetWidth / imgAspect;
+                dx = frameLeft;
+                dy = frameTop + (targetHeight - dHeight) / 2;
+            } else {
+                dHeight = targetHeight;
+                dWidth = targetHeight * imgAspect;
+                dx = frameLeft + (targetWidth - dWidth) / 2;
+                dy = frameTop;
+            }
+
+            ctx.drawImage(capturedImageObj, dx, dy, dWidth, dHeight);
+        }
+
+        const active = getActiveIdol();
+        if (active.group || active.idol) {
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 42px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            
+            const textString = `${active.group} ${active.idol}`.trim();
+            ctx.fillText(textString, 80, canvas.height - 120);
+
+            ctx.fillStyle = active.color;
+            ctx.fillRect(80, canvas.height - 100, 200, 12);
+        }
+    }
+
+    // 3. モーダル＆お絵描きツール設定
+    function openModal(htmlContent) {
+        modalBody.innerHTML = htmlContent;
+        modalOverlay.classList.add('active');
+    }
+
+    modalCloseBtn.addEventListener('click', () => {
+        modalOverlay.classList.remove('active');
+    });
+
+    // カラーパレット表示モーダル
+    toolColor.addEventListener('click', () => {
+        isEraser = false;
+        isStampMode = false;
+        updateActiveTool(toolColor);
+
+        let html = '<p style="text-align:center; font-weight:bold;">カラーを選択</p><div class="palette-grid">';
+        customColorPalette.forEach(c => {
+            html += `
+                <div class="color-chip-wrapper" data-color="${c.hex}">
+                    <div class="color-chip" style="background-color: ${c.hex};"></div>
+                    <span class="color-label">${c.displayName}</span>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        openModal(html);
+
+        document.querySelectorAll('.color-chip-wrapper').forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                currentColor = e.currentTarget.getAttribute('data-color');
+                modalOverlay.classList.remove('active');
+            });
+        });
+    });
+
+    toolSize.addEventListener('click', () => {
+        isEraser = false;
+        isStampMode = false;
+        updateActiveTool(toolSize);
+
+        let html = `
+            <p style="text-align:center; font-weight:bold;">ペンの太さ: <span id="size-val">${currentSize}</span>px</p>
+            <input type="range" id="modal-size-range" min="2" max="60" value="${currentSize}" style="width:100%; margin:20px 0;">
+        `;
+        openModal(html);
+
+        const range = document.getElementById('modal-size-range');
+        const sizeVal = document.getElementById('size-val');
+        range.addEventListener('input', (e) => {
+            currentSize = e.target.value;
+            sizeVal.textContent = currentSize;
+        });
+    });
+
+    toolEraser.addEventListener('click', () => {
+        isEraser = true;
+        isStampMode = false;
+        updateActiveTool(toolEraser);
+    });
+
+    toolStamp.addEventListener('click', () => {
+        isEraser = false;
+        isStampMode = true;
+        updateActiveTool(toolStamp);
+
+        const stamps = ['⭐', '❤️', '🔥', '🎉', '🌸', '👍', '🐱', '🐶', '✨'];
+        let html = '<p style="text-align:center; font-weight:bold;">スタンプを選択</p><div class="stamp-grid">';
+        stamps.forEach(s => {
+            html += `<div class="stamp-item" data-stamp="${s}">${s}</div>`;
+        });
+        html += '</div>';
+
+        openModal(html);
+
+        document.querySelectorAll('.stamp-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                selectedStamp = e.target.getAttribute('data-stamp');
+                modalOverlay.classList.remove('active');
+            });
+        });
+    });
+
+    function updateActiveTool(activeBtn) {
+        [toolColor, toolSize, toolEraser, toolStamp].forEach(btn => btn.classList.remove('active-tool'));
+        activeBtn.classList.add('active-tool');
+    }
+
+    // 4. キャンバス描画操作
+    function getEventPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    function startAction(e) {
+        const pos = getEventPos(e);
+
+        if (isStampMode) {
+            ctx.font = '80px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(selectedStamp, pos.x, pos.y);
+        } else {
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+        e.preventDefault();
+    }
+
+    function drawAction(e) {
+        if (!isDrawing || isStampMode) return;
+        const pos = getEventPos(e);
+
+        ctx.lineTo(pos.x, pos.y);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = currentSize;
+
+        if (isEraser) {
+            ctx.strokeStyle = '#FFFFFF';
+        } else {
+            ctx.strokeStyle = currentColor;
+        }
+
+        ctx.stroke();
+        e.preventDefault();
+    }
+
+    function stopAction() {
+        isDrawing = false;
+    }
+
+    canvas.addEventListener('mousedown', startAction);
+    canvas.addEventListener('mousemove', drawAction);
+    window.addEventListener('mouseup', stopAction);
+
+    canvas.addEventListener('touchstart', startAction, { passive: false });
+    canvas.addEventListener('touchmove', drawAction, { passive: false });
+    canvas.addEventListener('touchend', stopAction);
+
+    toolClear.addEventListener('click', () => {
+        if (confirm('落書きをすべて消去しますか？')) {
+            redrawCanvas();
+        }
+    });
+
+    retakeBtn.addEventListener('click', () => {
+        editorContainer.classList.remove('active');
+        cameraContainer.classList.add('active');
+        startCamera();
+    });
+
+    saveBtn.addEventListener('click', () => {
+        const dataURL = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        const active = getActiveIdol();
+        const safeGroup = active.group ? `${active.group}_` : '';
+        const safeIdol = active.idol ? `${active.idol}_` : '';
+        link.download = `cheki_${safeGroup}${safeIdol}${Date.now()}.png`;
+        link.href = dataURL;
+        link.click();
+    });
+
+    // 初期起動
+    startCamera();
+});
