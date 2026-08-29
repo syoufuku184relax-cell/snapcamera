@@ -10,19 +10,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const switchCameraBtn = document.getElementById('switch-camera-btn');
     const retakeBtn = document.getElementById('retake-btn');
     const saveBtn = document.getElementById('save-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const eraserBtn = document.getElementById('eraser-btn');
 
-    const penColorInput = document.getElementById('pen-color');
-    const penSizeInput = document.getElementById('pen-size');
+    // アイコンボタン
+    const toolColor = document.getElementById('tool-color');
+    const toolSize = document.getElementById('tool-size');
+    const toolEraser = document.getElementById('tool-eraser');
+    const toolStamp = document.getElementById('tool-stamp');
+    const toolClear = document.getElementById('tool-clear');
+
+    // モーダル要素
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalBody = document.getElementById('modal-body');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
 
     // 状態管理
     let currentStream = null;
-    let useFrontCamera = true; // 初期はインカメラ
+    let useFrontCamera = true;
     let isDrawing = false;
     let isEraser = false;
+    let isStampMode = false;
+    let selectedStamp = '⭐';
     
-    // キャプチャした元画像を保持する変数
+    let currentColor = '#ff3366';
+    let currentSize = 10;
     let capturedImageObj = null;
 
     // 1. カメラ起動処理
@@ -34,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const constraints = {
             video: {
                 facingMode: useFrontCamera ? 'user' : 'environment',
-                aspectRatio: { ideal: 3/4 } // 3:4の比率を意識
+                aspectRatio: { ideal: 3/4 }
             },
             audio: false
         };
@@ -43,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
             currentStream = await navigator.mediaDevices.getUserMedia(constraints);
             videoElement.srcObject = currentStream;
 
-            // インカメラの場合のみプレビューを左右反転させる
             if (useFrontCamera) {
                 videoElement.classList.add('camera-mirrored');
             } else {
@@ -55,27 +64,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // カメラ切替ボタン
     switchCameraBtn.addEventListener('click', () => {
         useFrontCamera = !useFrontCamera;
         startCamera();
     });
 
-    // 2. 撮影処理 ＆ 9:16上寄せ配置
+    // 2. 撮影処理 ＆ 9:16フレーム配置（左右は細く、上はやや広く、下は現状の1/3くらい広く＝下部にスペースを確保）
     captureBtn.addEventListener('click', () => {
-        // 9:16 仮想キャンバスの解像度 (横1080 × 縦1920)
         canvas.width = 1080;
         canvas.height = 1920;
 
-        // 背景を白で塗りつぶす
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ビデオのサイズを取得
         const vWidth = videoElement.videoWidth;
         const vHeight = videoElement.videoHeight;
 
-        // 一時的なキャンバスに描画（インカメラの場合は左右反転を焼き込む）
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = vWidth;
         tempCanvas.height = vHeight;
@@ -90,111 +94,52 @@ document.addEventListener('DOMContentLoaded', () => {
         capturedImageObj = new Image();
         capturedImageObj.onload = () => {
             redrawCanvas();
-            // 画面をエディターに切り替え
             cameraContainer.classList.remove('active');
             editorContainer.classList.add('active');
         };
         capturedImageObj.src = tempCanvas.toDataURL('image/png');
     });
 
-    // キャンバス全体を描画し直す関数（画像＋落書きの維持用）
     function redrawCanvas() {
-        // 背景クリア
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (capturedImageObj) {
-            const dWidth = canvas.width;
+            // 要件：「左右は細く、上は左右よりやや広く、下は現状の1/3くらい」
+            // 左右のマージンを60px（細め）、上部のマージンを120px（左右より広め）に設計
+            const marginX = 60;
+            const topMargin = 120;
+            const dWidth = canvas.width - (marginX * 2); // 960px
             const dHeight = (capturedImageObj.height / capturedImageObj.width) * dWidth;
-            // 上寄せ（Y座標 = 0）で配置
-            ctx.drawImage(capturedImageObj, 0, 0, dWidth, dHeight);
+
+            ctx.drawImage(capturedImageObj, marginX, topMargin, dWidth, dHeight);
         }
     }
 
-    // 3. 全体への落書き機能 (タッチ & マウス対応)
-    function getEventPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-        return {
-            x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
-        };
+    // 3. モーダル表示制御
+    function openModal(htmlContent) {
+        modalBody.innerHTML = htmlContent;
+        modalOverlay.classList.add('active');
     }
 
-    function startDrawing(e) {
-        isDrawing = true;
-        const pos = getEventPos(e);
-        ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
-        e.preventDefault();
-    }
-
-    function draw(e) {
-        if (!isDrawing) return;
-        const pos = getEventPos(e);
-
-        ctx.lineTo(pos.x, pos.y);
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = penSizeInput.value;
-
-        if (isEraser) {
-            ctx.strokeStyle = '#FFFFFF';
-        } else {
-            ctx.strokeStyle = penColorInput.value;
-        }
-
-        ctx.stroke();
-        e.preventDefault();
-    }
-
-    function stopDrawing() {
-        isDrawing = false;
-    }
-
-    // イベントリスナーの登録（マウス・タッチ）
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', stopDrawing);
-
-    canvas.addEventListener('touchstart', startDrawing, { passive: false });
-    canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', stopDrawing);
-
-    // ツール操作ボタン
-    eraserBtn.addEventListener('click', () => {
-        isEraser = !isEraser;
-        eraserBtn.style.backgroundColor = isEraser ? '#ff3366' : '#555';
+    modalCloseBtn.addEventListener('click', () => {
+        modalOverlay.classList.remove('active');
     });
 
-    clearBtn.addEventListener('click', () => {
-        if (confirm('落書きをすべて消去しますか？')) {
-            redrawCanvas();
-        }
-    });
+    // カラーパレットを開く
+    toolColor.addEventListener('click', () => {
+        isEraser = false;
+        isStampMode = false;
+        updateActiveTool(toolColor);
 
-    // 撮り直しボタン
-    retakeBtn.addEventListener('click', () => {
-        editorContainer.classList.remove('active');
-        cameraContainer.classList.add('active');
-        startCamera();
-    });
+        const colors = ['#ff3366', '#ff9933', '#ffff33', '#33cc66', '#3399ff', '#9933ff', '#ffffff', '#000000'];
+        let html = '<p style="text-align:center; font-weight:bold;">カラーを選択</p><div class="palette-grid">';
+        colors.forEach(c => {
+            html += `<div class="color-chip" style="background-color: ${c};" data-color="${c}"></div>`;
+        });
+        html += '</div>';
 
-    // 4. 保存機能
-    saveBtn.addEventListener('click', () => {
-        const dataURL = canvas.toDataURL('image/png');
-        
-        const link = document.createElement('a');
-        link.download = `doodle_${Date.now()}.png`;
-        link.href = dataURL;
-        link.click();
-    });
+        openModal(html);
 
-    // 初期化：アプリ起動時にカメラをスタート
-    startCamera();
-});
+        // カラー選択イベント
+        document.querySelectorAll('.color-chip').forEach(chip
