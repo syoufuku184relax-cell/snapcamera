@@ -1,9 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
     // 要素の取得
     const cameraContainer = document.getElementById('camera-container');
+    const previewContainer = document.getElementById('preview-container');
     const editorContainer = document.getElementById('editor-container');
+    
     const videoElement = document.getElementById('camera-stream');
     const countdownOverlay = document.getElementById('countdown-overlay');
+    const previewImg = document.getElementById('preview-img');
+    
     const canvas = document.getElementById('paint-canvas');
     const ctx = canvas.getContext('2d');
 
@@ -12,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const flashBtn = document.getElementById('flash-btn');
     const timerBtn = document.getElementById('timer-btn');
     const timerBadge = document.getElementById('timer-badge');
+    
+    const previewRetakeBtn = document.getElementById('preview-retake-btn');
+    const previewOkBtn = document.getElementById('preview-ok-btn');
+    
     const retakeBtn = document.getElementById('retake-btn');
     const saveBtn = document.getElementById('save-btn');
 
@@ -32,7 +40,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let useFrontCamera = true;
     let flashOn = false;
     
-    // タイマー設定 (0:オフ, 3:3秒, 5:5秒, 10:10秒)
     let timerSeconds = 0;
     let isCountingDown = false;
 
@@ -89,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // カメラ切替
     switchCameraBtn.addEventListener('click', () => {
         useFrontCamera = !useFrontCamera;
         flashOn = false;
@@ -97,7 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
         startCamera();
     });
 
-    // フラッシュ（トーチ）のオンオフ
     flashBtn.addEventListener('click', async () => {
         if (!currentStream) return;
         const track = currentStream.getVideoTracks()[0];
@@ -123,7 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // タイマー切替ボタン（オフ ➔ 3秒 ➔ 5秒 ➔ 10秒 ➔ オフ）
     timerBtn.addEventListener('click', () => {
         if (timerSeconds === 0) {
             timerSeconds = 3;
@@ -182,14 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
         initialPinchDistance = null;
     });
 
-    // 2. 撮影＆タイマー処理
-    function executeCapture() {
-        canvas.width = 1080;
-        canvas.height = 1920;
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    // 2. 撮影処理 ➔ プレビュー画面へ遷移
+    function processCapture() {
         const vWidth = videoElement.videoWidth;
         const vHeight = videoElement.videoHeight;
 
@@ -206,9 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         capturedImageObj = new Image();
         capturedImageObj.onload = () => {
-            redrawCanvas();
+            previewImg.src = tempCanvas.toDataURL('image/png');
             cameraContainer.classList.remove('active');
-            editorContainer.classList.add('active');
+            previewContainer.classList.add('active');
         };
         capturedImageObj.src = tempCanvas.toDataURL('image/png');
     }
@@ -217,9 +215,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isCountingDown) return;
 
         if (timerSeconds === 0) {
-            executeCapture();
+            processCapture();
         } else {
-            // タイマー撮影の実行
             isCountingDown = true;
             captureBtn.disabled = true;
             let remaining = timerSeconds;
@@ -234,23 +231,66 @@ document.addEventListener('DOMContentLoaded', () => {
                     countdownOverlay.textContent = '';
                     isCountingDown = false;
                     captureBtn.disabled = false;
-                    executeCapture();
+                    processCapture();
                 }
             }, 1000);
         }
     });
 
+    // プレビュー画面での「撮り直す」
+    previewRetakeBtn.addEventListener('click', () => {
+        previewContainer.classList.remove('active');
+        cameraContainer.classList.add('active');
+        startCamera();
+    });
+
+    // プレビュー画面での「落書きへ進む」（チェキ風フレームをCanvasにレンダリング）
+    previewOkBtn.addEventListener('click', () => {
+        canvas.width = 1080;
+        canvas.height = 1920;
+        redrawCanvas();
+        
+        previewContainer.classList.remove('active');
+        editorContainer.classList.add('active');
+    });
+
+    // チェキ風フレーム（左右は細く、上はやや広く、下は広い余白）に写真をできるだけ大きく合わせる
     function redrawCanvas() {
+        // 白のチェキ背景ベース
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (capturedImageObj) {
-            const marginX = 60;
-            const topMargin = 120;
-            const dWidth = canvas.width - (marginX * 2);
-            const dHeight = (capturedImageObj.height / capturedImageObj.width) * dWidth;
+            // チェキ風マージン設定（上:120px, 左右:60px, 下:350px を想定した比率計算）
+            const frameLeft = 60;
+            const frameTop = 120;
+            const frameRight = 60;
+            const frameBottom = 350; // 下部を広く
 
-            ctx.drawImage(capturedImageObj, marginX, topMargin, dWidth, dHeight);
+            const targetWidth = canvas.width - (frameLeft + frameRight);
+            const targetHeight = canvas.height - (frameTop + frameBottom);
+
+            // 3:4の撮影画像をできるだけ大きく（cover/containのバランス）めいっぱいに合わせる
+            const imgAspect = capturedImageObj.width / capturedImageObj.height;
+            const targetAspect = targetWidth / targetHeight;
+
+            let dWidth, dHeight, dx, dy;
+
+            if (imgAspect > targetAspect) {
+                // 横長寄り
+                dWidth = targetWidth;
+                dHeight = targetWidth / imgAspect;
+                dx = frameLeft;
+                dy = frameTop + (targetHeight - dHeight) / 2;
+            } else {
+                // 縦長寄り
+                dHeight = targetHeight;
+                dWidth = targetHeight * imgAspect;
+                dx = frameLeft + (targetWidth - dWidth) / 2;
+                dy = frameTop;
+            }
+
+            ctx.drawImage(capturedImageObj, dx, dy, dWidth, dHeight);
         }
     }
 
@@ -415,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', () => {
         const dataURL = canvas.toDataURL('image/png');
         const link = document.createElement('a');
-        link.download = `doodle_${Date.now()}.png`;
+        link.download = `cheki_${Date.now()}.png`;
         link.href = dataURL;
         link.click();
     });
