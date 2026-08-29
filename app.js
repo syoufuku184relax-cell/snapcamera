@@ -78,10 +78,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeIdolId = Number(localStorage.getItem('cheki_active_idol_id')) || (idolList.length > 0 ? idolList[0].id : null);
 
     function getActiveIdol() {
-        return idolList.find(item => item.id === activeIdolId) || idolList[0] || { group: '', idol: '', color: '#ff3366' };
+        return idolList.find(item => item.id === activeIdolId) || idolList[0] || { group: '', idol: '', color: '#FFFFFF' };
     }
 
     let currentColor = getActiveIdol().color;
+    let selectedNewColor = customColorPalette[1].hex; // 追加時の初期選択色 (赤)
 
     function updateActiveBadge() {
         const active = getActiveIdol();
@@ -139,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // カメラ画面のバッジをタップした時も選択モーダルを開く
     activeIdolBadge.addEventListener('click', () => {
         openSelectIdolModal();
     });
@@ -148,10 +148,18 @@ document.addEventListener('DOMContentLoaded', () => {
         openSelectIdolModal();
     });
 
-    // アイドル選択＆管理のポップアップモーダル（画面中央）
+    // アイドル選択＆管理のポップアップモーダル
     function openSelectIdolModal() {
         let groupOptions = groups.map(g => `<option value="${g}" ${g === currentGroup ? 'selected' : ''}>${g}</option>`).join('');
         groupOptions += `<option value="__NEW__">＋ 新規グループ追加</option>`;
+
+        // パレット状のカラーチップ作成
+        let paletteHtml = customColorPalette.map(c => `
+            <div class="color-chip-wrapper setting-color-chip ${c.hex === selectedNewColor ? 'selected-chip' : ''}" data-color="${c.hex}" style="cursor:pointer; display:flex; flex-direction:column; align-items:center;">
+                <div class="color-chip" style="background-color: ${c.hex}; width:32px; height:32px; border-radius:50%; border:2px solid ${c.hex === '#FFFFFF' ? '#ccc' : '#fff'};"></div>
+                <span class="color-label" style="font-size:0.7rem; margin-top:2px; color:#fff;">${c.displayName}</span>
+            </div>
+        `).join('');
 
         let html = `
             <p style="text-align:center; font-weight:bold;">推しメン選択・登録</p>
@@ -173,12 +181,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <input type="text" id="new-idol-name" placeholder="例: 推しメン名前">
                     </div>
                     <div class="setting-group">
-                        <label>メンカラ</label>
-                        <select id="new-idol-color">
-                            ${customColorPalette.map(c => `<option value="${c.hex}">${c.name} (${c.displayName})</option>`).join('')}
-                        </select>
+                        <label>メンカラを選択</label>
+                        <div class="palette-grid" style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:6px; background:rgba(255,255,255,0.05); padding:8px; border-radius:8px;">
+                            ${paletteHtml}
+                        </div>
                     </div>
-                    <button id="add-idol-btn" class="btn primary" style="padding:6px; font-size:0.85rem; margin-top:4px;">追加する</button>
+                    <button id="add-idol-btn" class="btn primary" style="padding:6px; font-size:0.85rem; margin-top:8px;">追加する</button>
                 </div>
 
                 <div class="idol-list-box">
@@ -205,6 +213,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // メンカラパレットタップイベント
+        document.querySelectorAll('.setting-color-chip').forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                selectedNewColor = e.currentTarget.getAttribute('data-color');
+                document.querySelectorAll('.setting-color-chip').forEach(c => c.style.opacity = '0.5');
+                e.currentTarget.style.opacity = '1.0';
+            });
+        });
+
         // メンバー追加イベント
         document.getElementById('add-idol-btn').addEventListener('click', () => {
             let selectedGroup = currentGroup;
@@ -223,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const nameVal = document.getElementById('new-idol-name').value.trim();
-            const colorVal = document.getElementById('new-idol-color').value;
 
             if (!nameVal) {
                 alert('アイドル名を入力してください。');
@@ -234,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 id: Date.now(),
                 group: selectedGroup,
                 idol: nameVal,
-                color: colorVal
+                color: selectedNewColor
             };
 
             idolList.push(newItem);
@@ -251,7 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('idol-items-container');
         if (!container) return;
 
-        // 現在のグループに所属するメンバーをフィルタリング
         const filteredList = idolList.filter(item => item.group === currentGroup);
 
         if (filteredList.length === 0) {
@@ -284,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveData();
                 renderIdolListInModal();
                 updateActiveBadge();
-                modalOverlay.classList.remove('active'); // 選択完了でモーダル閉じる
+                modalOverlay.classList.remove('active');
             });
         });
 
@@ -296,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 idolList = idolList.filter(item => item.id !== id);
                 if (activeIdolId === id) {
                     activeIdolId = idolList.length > 0 ? idolList[0].id : null;
-                    currentColor = activeIdolId ? getActiveIdol().color : '#ff3366';
+                    currentColor = activeIdolId ? getActiveIdol().color : '#FFFFFF';
                 }
                 saveData();
                 renderIdolListInModal();
@@ -437,8 +452,12 @@ document.addEventListener('DOMContentLoaded', () => {
         editorContainer.classList.add('active');
     });
 
+    // メンバーカラーをフレーム色にする処理
     function redrawCanvas() {
-        ctx.fillStyle = '#FFFFFF';
+        const active = getActiveIdol();
+
+        // フレーム背景をメンカラに設定（未設定の場合は白）
+        ctx.fillStyle = active.color || '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (capturedImageObj) {
@@ -470,18 +489,22 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.drawImage(capturedImageObj, dx, dy, dWidth, dHeight);
         }
 
-        const active = getActiveIdol();
+        // 下部のアド・名入れ文字（背景が黒や暗い色の時のため文字色を白／明るく認識）
         if (active.group || active.idol) {
-            ctx.fillStyle = '#333333';
+            // 文字色の視認性確保（メンカラが明るい色か暗い色かで判別）
+            const hex = (active.color || '#FFFFFF').replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16) || 255;
+            const g = parseInt(hex.substring(2, 4), 16) || 255;
+            const b = parseInt(hex.substring(4, 6), 16) || 255;
+            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+            
+            ctx.fillStyle = brightness > 128 ? '#111111' : '#FFFFFF';
             ctx.font = 'bold 42px sans-serif';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'bottom';
             
             const textString = `${active.group} ${active.idol}`.trim();
             ctx.fillText(textString, 80, canvas.height - 120);
-
-            ctx.fillStyle = active.color;
-            ctx.fillRect(80, canvas.height - 100, 200, 12);
         }
     }
 
@@ -615,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.lineWidth = currentSize;
 
         if (isEraser) {
-            ctx.strokeStyle = '#FFFFFF';
+            ctx.strokeStyle = getActiveIdol().color || '#FFFFFF'; // 消しゴム使用時はフレーム色で消す
         } else {
             ctx.strokeStyle = currentColor;
         }
