@@ -3,12 +3,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const cameraContainer = document.getElementById('camera-container');
     const editorContainer = document.getElementById('editor-container');
     const videoElement = document.getElementById('camera-stream');
+    const countdownOverlay = document.getElementById('countdown-overlay');
     const canvas = document.getElementById('paint-canvas');
     const ctx = canvas.getContext('2d');
 
     const captureBtn = document.getElementById('capture-btn');
     const switchCameraBtn = document.getElementById('switch-camera-btn');
     const flashBtn = document.getElementById('flash-btn');
+    const timerBtn = document.getElementById('timer-btn');
+    const timerBadge = document.getElementById('timer-badge');
     const retakeBtn = document.getElementById('retake-btn');
     const saveBtn = document.getElementById('save-btn');
 
@@ -28,6 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentStream = null;
     let useFrontCamera = true;
     let flashOn = false;
+    
+    // タイマー設定 (0:オフ, 3:3秒, 5:5秒, 10:10秒)
+    let timerSeconds = 0;
+    let isCountingDown = false;
+
     let isDrawing = false;
     let isEraser = false;
     let isStampMode = false;
@@ -62,13 +70,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (useFrontCamera) {
                 videoElement.classList.add('camera-mirrored');
-                flashBtn.style.display = 'none'; // インカメラ時はフラッシュ非表示
+                flashBtn.style.display = 'none';
             } else {
                 videoElement.classList.remove('camera-mirrored');
-                flashBtn.style.display = 'flex'; // アウトカメラ時はフラッシュ表示
+                flashBtn.style.display = 'flex';
             }
 
-            // トラック情報からズーム機能（Capabilities）の取得を試みる
             const track = currentStream.getVideoTracks()[0];
             const capabilities = track.getCapabilities ? track.getCapabilities() : {};
             if (capabilities.zoom) {
@@ -116,7 +123,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ピンチアウトによるズーム機能（タッチ操作）
+    // タイマー切替ボタン（オフ ➔ 3秒 ➔ 5秒 ➔ 10秒 ➔ オフ）
+    timerBtn.addEventListener('click', () => {
+        if (timerSeconds === 0) {
+            timerSeconds = 3;
+            timerBadge.textContent = '3秒';
+            timerBtn.classList.add('active-tool');
+        } else if (timerSeconds === 3) {
+            timerSeconds = 5;
+            timerBadge.textContent = '5秒';
+        } else if (timerSeconds === 5) {
+            timerSeconds = 10;
+            timerBadge.textContent = '10秒';
+        } else {
+            timerSeconds = 0;
+            timerBadge.textContent = 'オフ';
+            timerBtn.classList.remove('active-tool');
+        }
+    });
+
+    // ピンチアウトによるズーム機能
     function getDistance(touches) {
         const dx = touches[0].clientX - touches[1].clientX;
         const dy = touches[0].clientY - touches[1].clientY;
@@ -156,8 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
         initialPinchDistance = null;
     });
 
-    // 2. 撮影処理 ＆ 9:16フレーム配置
-    captureBtn.addEventListener('click', () => {
+    // 2. 撮影＆タイマー処理
+    function executeCapture() {
         canvas.width = 1080;
         canvas.height = 1920;
 
@@ -185,6 +211,33 @@ document.addEventListener('DOMContentLoaded', () => {
             editorContainer.classList.add('active');
         };
         capturedImageObj.src = tempCanvas.toDataURL('image/png');
+    }
+
+    captureBtn.addEventListener('click', () => {
+        if (isCountingDown) return;
+
+        if (timerSeconds === 0) {
+            executeCapture();
+        } else {
+            // タイマー撮影の実行
+            isCountingDown = true;
+            captureBtn.disabled = true;
+            let remaining = timerSeconds;
+            countdownOverlay.textContent = remaining;
+
+            const countdownInterval = setInterval(() => {
+                remaining--;
+                if (remaining > 0) {
+                    countdownOverlay.textContent = remaining;
+                } else {
+                    clearInterval(countdownInterval);
+                    countdownOverlay.textContent = '';
+                    isCountingDown = false;
+                    captureBtn.disabled = false;
+                    executeCapture();
+                }
+            }, 1000);
+        }
     });
 
     function redrawCanvas() {
@@ -192,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (capturedImageObj) {
-            // 左右は細く(60px)、上はやや広く(120px)、下部に広めの余白を確保
             const marginX = 60;
             const topMargin = 120;
             const dWidth = canvas.width - (marginX * 2);
