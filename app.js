@@ -42,6 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             currentStream = await navigator.mediaDevices.getUserMedia(constraints);
             videoElement.srcObject = currentStream;
+
+            // インカメラの場合のみプレビューを左右反転させる
+            if (useFrontCamera) {
+                videoElement.classList.add('camera-mirrored');
+            } else {
+                videoElement.classList.remove('camera-mirrored');
+            }
         } catch (err) {
             console.error('カメラの起動に失敗しました:', err);
             alert('カメラへのアクセスが許可されていないか、利用できません。');
@@ -68,16 +75,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const vWidth = videoElement.videoWidth;
         const vHeight = videoElement.videoHeight;
 
-        // 写真を配置するサイズを計算 (横幅はいっぱいの1080ピクセルにする)
-        const dWidth = canvas.width;
-        // 3:4の比率を維持して高さを計算
-        const dHeight = (vHeight / vWidth) * dWidth;
-
-        // プレビュー用に一時的なImageオブジェクトを作成して保持
+        // 一時的なキャンバスに描画（インカメラの場合は左右反転を焼き込む）
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = vWidth;
         tempCanvas.height = vHeight;
         const tempCtx = tempCanvas.getContext('2d');
+
+        if (useFrontCamera) {
+            tempCtx.translate(vWidth, 0);
+            tempCtx.scale(-1, 1);
+        }
         tempCtx.drawImage(videoElement, 0, 0, vWidth, vHeight);
 
         capturedImageObj = new Image();
@@ -107,7 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. 全体への落書き機能 (タッチ & マウス対応)
     function getEventPos(e) {
         const rect = canvas.getBoundingClientRect();
-        // 画面上の表示サイズと実際のキャンバス解像度の比率を計算
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
 
@@ -138,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.lineWidth = penSizeInput.value;
 
         if (isEraser) {
-            // 消しゴムモード（白で上描き、または合成モード変更でも可）
             ctx.strokeStyle = '#FFFFFF';
         } else {
             ctx.strokeStyle = penColorInput.value;
@@ -184,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
     saveBtn.addEventListener('click', () => {
         const dataURL = canvas.toDataURL('image/png');
         
-        // スマホ向け：新しいタブで画像を開いて長押し保存を促す、またはリンクによるダウンロード
         const link = document.createElement('a');
         link.download = `doodle_${Date.now()}.png`;
         link.href = dataURL;
