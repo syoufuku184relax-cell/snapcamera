@@ -10,29 +10,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const switchCameraBtn = document.getElementById('switch-camera-btn');
     const retakeBtn = document.getElementById('retake-btn');
     const saveBtn = document.getElementById('save-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const eraserBtn = document.getElementById('eraser-btn');
 
-    // アイコンボタン
-    const toolColor = document.getElementById('tool-color');
-    const toolSize = document.getElementById('tool-size');
-    const toolEraser = document.getElementById('tool-eraser');
-    const toolStamp = document.getElementById('tool-stamp');
-    const toolClear = document.getElementById('tool-clear');
-
-    // モーダル要素
-    const modalOverlay = document.getElementById('modal-overlay');
-    const modalBody = document.getElementById('modal-body');
-    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const penColorInput = document.getElementById('pen-color');
+    const penSizeInput = document.getElementById('pen-size');
 
     // 状態管理
     let currentStream = null;
     let useFrontCamera = true;
     let isDrawing = false;
     let isEraser = false;
-    let isStampMode = false;
-    let selectedStamp = '⭐';
-    
-    let currentColor = '#ff3366';
-    let currentSize = 10;
     let capturedImageObj = null;
 
     // 1. カメラ起動処理
@@ -69,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startCamera();
     });
 
-    // 2. 撮影処理 ＆ 9:16フレーム配置（左右は細く、上はやや広く、下は現状の1/3くらい広く＝下部にスペースを確保）
+    // 2. 撮影処理 ＆ 9:16上寄せ配置
     captureBtn.addEventListener('click', () => {
         canvas.width = 1080;
         canvas.height = 1920;
@@ -105,41 +93,90 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (capturedImageObj) {
-            // 要件：「左右は細く、上は左右よりやや広く、下は現状の1/3くらい」
-            // 左右のマージンを60px（細め）、上部のマージンを120px（左右より広め）に設計
-            const marginX = 60;
-            const topMargin = 120;
-            const dWidth = canvas.width - (marginX * 2); // 960px
+            const dWidth = canvas.width;
             const dHeight = (capturedImageObj.height / capturedImageObj.width) * dWidth;
-
-            ctx.drawImage(capturedImageObj, marginX, topMargin, dWidth, dHeight);
+            ctx.drawImage(capturedImageObj, 0, 0, dWidth, dHeight);
         }
     }
 
-    // 3. モーダル表示制御
-    function openModal(htmlContent) {
-        modalBody.innerHTML = htmlContent;
-        modalOverlay.classList.add('active');
+    // 3. 全体への落書き機能
+    function getEventPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
     }
 
-    modalCloseBtn.addEventListener('click', () => {
-        modalOverlay.classList.remove('active');
+    function startDrawing(e) {
+        isDrawing = true;
+        const pos = getEventPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        e.preventDefault();
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        const pos = getEventPos(e);
+
+        ctx.lineTo(pos.x, pos.y);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = penSizeInput.value;
+
+        if (isEraser) {
+            ctx.strokeStyle = '#FFFFFF';
+        } else {
+            ctx.strokeStyle = penColorInput.value;
+        }
+
+        ctx.stroke();
+        e.preventDefault();
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+    }
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    window.addEventListener('mouseup', stopDrawing);
+
+    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing);
+
+    eraserBtn.addEventListener('click', () => {
+        isEraser = !isEraser;
+        eraserBtn.style.backgroundColor = isEraser ? '#ff3366' : '#555';
     });
 
-    // カラーパレットを開く
-    toolColor.addEventListener('click', () => {
-        isEraser = false;
-        isStampMode = false;
-        updateActiveTool(toolColor);
+    clearBtn.addEventListener('click', () => {
+        if (confirm('落書きをすべて消去しますか？')) {
+            redrawCanvas();
+        }
+    });
 
-        const colors = ['#ff3366', '#ff9933', '#ffff33', '#33cc66', '#3399ff', '#9933ff', '#ffffff', '#000000'];
-        let html = '<p style="text-align:center; font-weight:bold;">カラーを選択</p><div class="palette-grid">';
-        colors.forEach(c => {
-            html += `<div class="color-chip" style="background-color: ${c};" data-color="${c}"></div>`;
-        });
-        html += '</div>';
+    retakeBtn.addEventListener('click', () => {
+        editorContainer.classList.remove('active');
+        cameraContainer.classList.add('active');
+        startCamera();
+    });
 
-        openModal(html);
+    saveBtn.addEventListener('click', () => {
+        const dataURL = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `doodle_${Date.now()}.png`;
+        link.href = dataURL;
+        link.click();
+    });
 
-        // カラー選択イベント
-        document.querySelectorAll('.color-chip').forEach(chip
+    startCamera();
+});
