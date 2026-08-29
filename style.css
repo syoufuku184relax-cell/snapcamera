@@ -1,0 +1,154 @@
+/* 基本リセットとレイアウト */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #121212;
+    color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 480px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #1e1e1e;
+}
+
+header {
+    padding: 12px;
+    text-align: center;
+    background-color: #252525;
+    border-bottom: 1px solid #333;
+}
+
+header h1 {
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+}
+
+main {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 画面切り替え用クラス */
+.view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+}
+
+.view.active {
+    display: flex;
+}
+
+/* カメラ画面のスタイル */
+#camera-stream {
+    width: 100%;
+    flex: 1;
+    object-fit: cover;
+    border-radius: 12px;
+    background-color: #000;
+}
+
+.camera-controls {
+    width: 100%;
+    display: flex;
+    gap: 12px;
+    padding: 16px 0;
+}
+
+/* エディター画面（キャンバス）のスタイル */
+#paint-canvas {
+    width: 100%;
+    max-height: 65vh;
+    object-fit: contain;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    touch-action: none; /* スマホでのスクロール誤動作を防ぐ */
+}
+
+/* ツールバーのスタイル */
+.paint-tools {
+    width: 100%;
+    background-color: #2a2a2a;
+    padding: 10px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tool-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.tool-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editor-controls {
+    width: 100%;
+    display: flex;
+    gap: 12px;
+}
+
+/* 共通ボタンスタイル */
+.btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+}
+
+.btn.primary {
+    background-color: #ff3366;
+    color: #fff;
+}
+
+.btn.secondary {
+    background-color: #444;
+    color: #fff;
+}
+
+.btn.small {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    background-color: #555;
+    color: #fff;
+}
+
+.btn:active {
+    opacity: 0.8;
+}
