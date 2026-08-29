@@ -7,12 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoElement = document.getElementById('camera-stream');
     const countdownOverlay = document.getElementById('countdown-overlay');
     const previewImg = document.getElementById('preview-img');
-    const chekiPreviewFrame = document.getElementById('cheki-preview-frame');
     
     const canvas = document.getElementById('paint-canvas');
     const ctx = canvas.getContext('2d');
 
     const captureBtn = document.getElementById('capture-btn');
+    const settingsBtn = document.getElementById('settings-btn');
     const switchCameraBtn = document.getElementById('switch-camera-btn');
     const flashBtn = document.getElementById('flash-btn');
     const timerBtn = document.getElementById('timer-btn');
@@ -53,11 +53,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSize = 10;
     let capturedImageObj = null;
 
-    // ズーム管理用
-    let currentZoom = 1;
+    // 設定値（localStorageから復元、初期値つき）
+    let appSettings = {
+        groupName: localStorage.getItem('cheki_group') || '',
+        idolName: localStorage.getItem('cheki_idol') || '',
+        menkara: localStorage.getItem('cheki_color') || '#ff3366'
+    };
+
+    let initialPinchDistance = null;
     let minZoom = 1;
     let maxZoom = 3;
-    let initialPinchDistance = null;
+    let currentZoom = 1;
 
     // 1. カメラ起動処理
     async function startCamera() {
@@ -96,6 +102,41 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('カメラの起動に失敗しました。');
         }
     }
+
+    // 設定ボタンの処理
+    settingsBtn.addEventListener('click', () => {
+        let html = `
+            <p style="text-align:center; font-weight:bold;">撮影設定</p>
+            <div class="setting-group">
+                <label>グループ名</label>
+                <input type="text" id="input-group" value="${appSettings.groupName}" placeholder="例: 〇〇アイドル">
+            </div>
+            <div class="setting-group">
+                <label>アイドル名</label>
+                <input type="text" id="input-idol" value="${appSettings.idolName}" placeholder="例: 推しメン名前">
+            </div>
+            <div class="setting-group">
+                <label>メンカラ (メンバーカラー)</label>
+                <input type="color" id="input-color" value="${appSettings.menkara}">
+            </div>
+        `;
+        openModal(html);
+
+        // 入力が変更されるたびに自動でlocalStorageに保存
+        document.getElementById('input-group').addEventListener('input', (e) => {
+            appSettings.groupName = e.target.value;
+            localStorage.setItem('cheki_group', appSettings.groupName);
+        });
+        document.getElementById('input-idol').addEventListener('input', (e) => {
+            appSettings.idolName = e.target.value;
+            localStorage.setItem('cheki_idol', appSettings.idolName);
+        });
+        document.getElementById('input-color').addEventListener('input', (e) => {
+            appSettings.menkara = e.target.value;
+            localStorage.setItem('cheki_color', appSettings.menkara);
+            currentColor = appSettings.menkara; // ペンカラーにも反映
+        });
+    });
 
     switchCameraBtn.addEventListener('click', () => {
         useFrontCamera = !useFrontCamera;
@@ -147,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ピンチアウトによるズーム機能
+    // ピンチズーム
     function getDistance(touches) {
         const dx = touches[0].clientX - touches[1].clientX;
         const dy = touches[0].clientY - touches[1].clientY;
@@ -171,13 +212,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!capabilities.zoom) return;
 
             let newZoom = currentZoom * scaleFactor;
-            newZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+            newZoom = Math.max(minZoom, Math.max(minZoom, Math.min(maxZoom, newZoom)));
             
             try {
                 await track.applyConstraints({ advanced: [{ zoom: newZoom }] });
                 currentZoom = newZoom;
             } catch (err) {
-                console.error('ズーム適用エラー:', err);
+                console.error('ズームエラー:', err);
             }
             initialPinchDistance = currentDistance;
         }
@@ -187,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         initialPinchDistance = null;
     });
 
-    // 2. 撮影処理 ➔ プレビュー画面へ遷移
+    // 2. 撮影処理 ➔ プレビューへ
     function processCapture() {
         const vWidth = videoElement.videoWidth;
         const vHeight = videoElement.videoHeight;
@@ -244,21 +285,32 @@ document.addEventListener('DOMContentLoaded', () => {
         startCamera();
     });
 
+    // ★プレビュー確認後、デザインモードへ移行する直前に保存する処理
     previewOkBtn.addEventListener('click', () => {
         canvas.width = 1080;
         canvas.height = 1920;
         redrawCanvas();
-        
+
+        // 自動保存を実行
+        const dataURL = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        const safeGroup = appSettings.groupName ? `${appSettings.groupName}_` : '';
+        const safeIdol = appSettings.idolName ? `${appSettings.idolName}_` : '';
+        link.download = `cheki_${safeGroup}${safeIdol}${Date.now()}.png`;
+        link.href = dataURL;
+        link.click();
+
+        // そのままデザインモード（お絵描き画面）へ移行
         previewContainer.classList.remove('active');
         editorContainer.classList.add('active');
     });
 
+    // チェキ風フレーム＆テキストの描画
     function redrawCanvas() {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (capturedImageObj) {
-            // チェキ風フレーム（上：広め、左右：細め、下：広い余白）
             const frameLeft = 60;
             const frameTop = 120;
             const frameRight = 60;
@@ -286,6 +338,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             ctx.drawImage(capturedImageObj, dx, dy, dWidth, dHeight);
         }
+
+        // 下部余白に設定したグループ名・アイドル名を描画
+        if (appSettings.groupName || appSettings.idolName) {
+            ctx.fillStyle = '#333333';
+            ctx.font = 'bold 42px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            
+            const textString = `${appSettings.groupName} ${appSettings.idolName}`.trim();
+            ctx.fillText(textString, 80, canvas.height - 120);
+
+            // メンカラのアクセントラインやアイコンを描画
+            ctx.fillStyle = appSettings.menkara;
+            ctx.fillRect(80, canvas.height - 100, 200, 12);
+        }
     }
 
     // 3. モーダル＆お絵描き設定
@@ -303,7 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
         isStampMode = false;
         updateActiveTool(toolColor);
 
-        const colors = ['#ff3366', '#ff9933', '#ffff33', '#33cc66', '#3399ff', '#9933ff', '#ffffff', '#000000'];
+        // メンカラをパレットの先頭に含める
+        const colors = [appSettings.menkara, '#ff3366', '#ff9933', '#ffff33', '#33cc66', '#3399ff', '#ffffff', '#000000'];
         let html = '<p style="text-align:center; font-weight:bold;">カラーを選択</p><div class="palette-grid">';
         colors.forEach(c => {
             html += `<div class="color-chip" style="background-color: ${c};" data-color="${c}"></div>`;
@@ -372,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activeBtn.classList.add('active-tool');
     }
 
-    // 4. キャンバス描画・スタンプ操作
+    // 4. キャンバス描画操作
     function getEventPos(e) {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
@@ -446,10 +514,13 @@ document.addEventListener('DOMContentLoaded', () => {
         startCamera();
     });
 
+    // デザイン画面での追加保存用ボタン
     saveBtn.addEventListener('click', () => {
         const dataURL = canvas.toDataURL('image/png');
         const link = document.createElement('a');
-        link.download = `cheki_${Date.now()}.png`;
+        const safeGroup = appSettings.groupName ? `${appSettings.groupName}_` : '';
+        const safeIdol = appSettings.idolName ? `${appSettings.idolName}_` : '';
+        link.download = `cheki_${safeGroup}${safeIdol}${Date.now()}.png`;
         link.href = dataURL;
         link.click();
     });
