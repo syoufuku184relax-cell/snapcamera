@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const videoElement = document.getElementById('camera-stream');
     const countdownOverlay = document.getElementById('countdown-overlay');
     const previewImg = document.getElementById('preview-img');
+    const chekiPreviewFrame = document.getElementById('cheki-preview-frame');
     
     const canvas = document.getElementById('paint-canvas');
     const ctx = canvas.getContext('2d');
@@ -237,14 +238,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // プレビュー画面での「撮り直す」
     previewRetakeBtn.addEventListener('click', () => {
         previewContainer.classList.remove('active');
         cameraContainer.classList.add('active');
         startCamera();
     });
 
-    // プレビュー画面での「落書きへ進む」（チェキ風フレームをCanvasにレンダリング）
     previewOkBtn.addEventListener('click', () => {
         canvas.width = 1080;
         canvas.height = 1920;
@@ -254,36 +253,31 @@ document.addEventListener('DOMContentLoaded', () => {
         editorContainer.classList.add('active');
     });
 
-    // チェキ風フレーム（左右は細く、上はやや広く、下は広い余白）に写真をできるだけ大きく合わせる
     function redrawCanvas() {
-        // 白のチェキ背景ベース
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (capturedImageObj) {
-            // チェキ風マージン設定（上:120px, 左右:60px, 下:350px を想定した比率計算）
+            // チェキ風フレーム（上：広め、左右：細め、下：広い余白）
             const frameLeft = 60;
             const frameTop = 120;
             const frameRight = 60;
-            const frameBottom = 350; // 下部を広く
+            const frameBottom = 350;
 
             const targetWidth = canvas.width - (frameLeft + frameRight);
             const targetHeight = canvas.height - (frameTop + frameBottom);
 
-            // 3:4の撮影画像をできるだけ大きく（cover/containのバランス）めいっぱいに合わせる
             const imgAspect = capturedImageObj.width / capturedImageObj.height;
             const targetAspect = targetWidth / targetHeight;
 
             let dWidth, dHeight, dx, dy;
 
             if (imgAspect > targetAspect) {
-                // 横長寄り
                 dWidth = targetWidth;
                 dHeight = targetWidth / imgAspect;
                 dx = frameLeft;
                 dy = frameTop + (targetHeight - dHeight) / 2;
             } else {
-                // 縦長寄り
                 dHeight = targetHeight;
                 dWidth = targetHeight * imgAspect;
                 dx = frameLeft + (targetWidth - dWidth) / 2;
