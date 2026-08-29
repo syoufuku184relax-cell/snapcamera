@@ -9,11 +9,9 @@
 <body>
 
     <div class="app-container">
-        <header>
-            <h1>CamDoodle</h1>
-        </header>
-
+        <!-- メインコンテンツエリア -->
         <main>
+            <!-- カメラプレビュー画面 -->
             <div id="camera-container" class="view active">
                 <video id="camera-stream" autoplay playsinline muted></video>
                 <div class="camera-controls">
@@ -22,9 +20,12 @@
                 </div>
             </div>
 
+            <!-- お絵描き・編集画面 (初期は非表示) -->
             <div id="editor-container" class="view">
+                <!-- 9:16キャンバスを画面に収まるようCSSでレスポンシブ表示 -->
                 <canvas id="paint-canvas" width="1080" height="1920"></canvas>
                 
+                <!-- お絵描きツールバー -->
                 <div class="paint-tools">
                     <div class="tool-group">
                         <label>色: <input type="color" id="pen-color" value="#ff3366"></label>
@@ -36,6 +37,7 @@
                     </div>
                 </div>
 
+                <!-- 完了・再撮影ボタン -->
                 <div class="editor-controls">
                     <button id="retake-btn" class="btn secondary">撮り直す</button>
                     <button id="save-btn" class="btn primary">画像を保存</button>
