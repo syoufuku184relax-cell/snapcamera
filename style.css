@@ -95,6 +95,24 @@ main {
     z-index: 10;
 }
 
+/* 選択中アイドルバッジ */
+.active-idol-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    z-index: 10;
+    max-width: 55%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .camera-controls {
     width: 100%;
     display: flex;
@@ -220,33 +238,148 @@ main {
     flex-shrink: 0;
 }
 
-/* 設定フォーム用スタイル */
+/* 設定モーダル・リスト用スタイル */
+.settings-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.setting-form-box {
+    background: #2a2a2a;
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .setting-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
     text-align: left;
 }
 
 .setting-group label {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: bold;
     color: #ccc;
 }
 
-.setting-group input {
+.setting-group input, .setting-group select {
     width: 100%;
-    padding: 8px 10px;
+    padding: 6px 8px;
     background: #333;
     border: 1px solid #555;
     border-radius: 6px;
     color: #fff;
-    font-size: 1rem;
+    font-size: 0.9rem;
 }
 
 .setting-group input[type="color"] {
-    height: 40px;
+    height: 36px;
     padding: 2px;
+    cursor: pointer;
+}
+
+.idol-list-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.idol-list-item {
+    background: #333;
+    padding: 8px 10px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 6px solid #ff3366;
+    cursor: pointer;
+}
+
+.idol-list-item.selected {
+    background: #442233;
+    border: 1px solid #ff3366;
+}
+
+.idol-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.85rem;
+    text-align: left;
+}
+
+.idol-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.action-sm-btn {
+    background: #555;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.action-sm-btn.danger {
+    background: #993333;
+}
+
+/* パレットグリッド (色名・短縮表示付き) */
+.palette-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.color-chip-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+    background: #333;
+    padding: 6px;
+    border-radius: 6px;
+}
+
+.color-chip {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.color-label {
+    font-size: 0.7rem;
+    color: #ddd;
+    text-align: center;
+}
+
+.stamp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    text-align: center;
+}
+
+.stamp-item {
+    font-size: 2rem;
+    background: #333;
+    border-radius: 8px;
+    padding: 8px;
     cursor: pointer;
 }
 
@@ -270,49 +403,20 @@ main {
 
 .modal-content {
     background: #252525;
-    padding: 24px;
+    padding: 20px;
     border-radius: 12px;
-    width: 85%;
-    max-width: 320px;
+    width: 90%;
+    max-width: 340px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 
 #modal-body {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-}
-
-.palette-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
-}
-
-.color-chip {
-    width: 100%;
-    aspect-ratio: 1;
-    border-radius: 50%;
-    border: 2px solid #fff;
-    cursor: pointer;
-}
-
-.stamp-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    text-align: center;
-}
-
-.stamp-item {
-    font-size: 2rem;
-    background: #333;
-    border-radius: 8px;
-    padding: 8px;
-    cursor: pointer;
 }
 
 .btn {
