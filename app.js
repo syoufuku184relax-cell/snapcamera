@@ -8,28 +8,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const captureBtn = document.getElementById('capture-btn');
     const switchCameraBtn = document.getElementById('switch-camera-btn');
+    const flashBtn = document.getElementById('flash-btn');
     const retakeBtn = document.getElementById('retake-btn');
     const saveBtn = document.getElementById('save-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const eraserBtn = document.getElementById('eraser-btn');
 
-    const penColorInput = document.getElementById('pen-color');
-    const penSizeInput = document.getElementById('pen-size');
+    // アイコンツールバー
+    const toolColor = document.getElementById('tool-color');
+    const toolSize = document.getElementById('tool-size');
+    const toolEraser = document.getElementById('tool-eraser');
+    const toolStamp = document.getElementById('tool-stamp');
+    const toolClear = document.getElementById('tool-clear');
+
+    // モーダル要素
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalBody = document.getElementById('modal-body');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
 
     // 状態管理
     let currentStream = null;
     let useFrontCamera = true;
+    let flashOn = false;
     let isDrawing = false;
     let isEraser = false;
+    let isStampMode = false;
+    let selectedStamp = '⭐';
+    
+    let currentColor = '#ff3366';
+    let currentSize = 10;
     let capturedImageObj = null;
 
+    // ズーム管理用
+    let currentZoom = 1;
+    let minZoom = 1;
+    let maxZoom = 3;
+    let initialPinchDistance = null;
+
     // 1. カメラ起動処理
-      async function startCamera() {
+    async function startCamera() {
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // 比率の固定を外し、カメラのデフォルトに任せる
         const constraints = {
             video: {
                 facingMode: useFrontCamera ? 'user' : 'environment'
@@ -43,21 +62,101 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (useFrontCamera) {
                 videoElement.classList.add('camera-mirrored');
+                flashBtn.style.display = 'none'; // インカメラ時はフラッシュ非表示
             } else {
                 videoElement.classList.remove('camera-mirrored');
+                flashBtn.style.display = 'flex'; // アウトカメラ時はフラッシュ表示
+            }
+
+            // トラック情報からズーム機能（Capabilities）の取得を試みる
+            const track = currentStream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+            if (capabilities.zoom) {
+                minZoom = capabilities.zoom.min || 1;
+                maxZoom = capabilities.zoom.max || 3;
+                currentZoom = minZoom;
             }
         } catch (err) {
             console.error('カメラの起動に失敗しました:', err);
-            alert('カメラの起動に失敗しました: ' + err.name); // エラー内容を画面に出す
+            alert('カメラの起動に失敗しました。');
         }
     }
 
+    // カメラ切替
     switchCameraBtn.addEventListener('click', () => {
         useFrontCamera = !useFrontCamera;
+        flashOn = false;
+        flashBtn.classList.remove('active-tool');
         startCamera();
     });
 
-    // 2. 撮影処理 ＆ 9:16上寄せ配置
+    // フラッシュ（トーチ）のオンオフ
+    flashBtn.addEventListener('click', async () => {
+        if (!currentStream) return;
+        const track = currentStream.getVideoTracks()[0];
+        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+
+        if (!capabilities.torch) {
+            alert('このデバイス/カメラはフラッシュ機能に対応していません。');
+            return;
+        }
+
+        try {
+            flashOn = !flashOn;
+            await track.applyConstraints({
+                advanced: [{ torch: flashOn }]
+            });
+            if (flashOn) {
+                flashBtn.classList.add('active-tool');
+            } else {
+                flashBtn.classList.remove('active-tool');
+            }
+        } catch (err) {
+            console.error('フラッシュの切替に失敗しました:', err);
+        }
+    });
+
+    // ピンチアウトによるズーム機能（タッチ操作）
+    function getDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    videoElement.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            initialPinchDistance = getDistance(e.touches);
+        }
+    });
+
+    videoElement.addEventListener('touchmove', async (e) => {
+        if (e.touches.length === 2 && initialPinchDistance !== null) {
+            const currentDistance = getDistance(e.touches);
+            const scaleFactor = currentDistance / initialPinchDistance;
+            
+            const track = currentStream ? currentStream.getVideoTracks()[0] : null;
+            if (!track) return;
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+            if (!capabilities.zoom) return;
+
+            let newZoom = currentZoom * scaleFactor;
+            newZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+            
+            try {
+                await track.applyConstraints({ advanced: [{ zoom: newZoom }] });
+                currentZoom = newZoom;
+            } catch (err) {
+                console.error('ズーム適用エラー:', err);
+            }
+            initialPinchDistance = currentDistance;
+        }
+    });
+
+    videoElement.addEventListener('touchend', () => {
+        initialPinchDistance = null;
+    });
+
+    // 2. 撮影処理 ＆ 9:16フレーム配置
     captureBtn.addEventListener('click', () => {
         canvas.width = 1080;
         canvas.height = 1920;
@@ -93,13 +192,101 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (capturedImageObj) {
-            const dWidth = canvas.width;
+            // 左右は細く(60px)、上はやや広く(120px)、下部に広めの余白を確保
+            const marginX = 60;
+            const topMargin = 120;
+            const dWidth = canvas.width - (marginX * 2);
             const dHeight = (capturedImageObj.height / capturedImageObj.width) * dWidth;
-            ctx.drawImage(capturedImageObj, 0, 0, dWidth, dHeight);
+
+            ctx.drawImage(capturedImageObj, marginX, topMargin, dWidth, dHeight);
         }
     }
 
-    // 3. 全体への落書き機能
+    // 3. モーダル＆お絵描き設定
+    function openModal(htmlContent) {
+        modalBody.innerHTML = htmlContent;
+        modalOverlay.classList.add('active');
+    }
+
+    modalCloseBtn.addEventListener('click', () => {
+        modalOverlay.classList.remove('active');
+    });
+
+    toolColor.addEventListener('click', () => {
+        isEraser = false;
+        isStampMode = false;
+        updateActiveTool(toolColor);
+
+        const colors = ['#ff3366', '#ff9933', '#ffff33', '#33cc66', '#3399ff', '#9933ff', '#ffffff', '#000000'];
+        let html = '<p style="text-align:center; font-weight:bold;">カラーを選択</p><div class="palette-grid">';
+        colors.forEach(c => {
+            html += `<div class="color-chip" style="background-color: ${c};" data-color="${c}"></div>`;
+        });
+        html += '</div>';
+
+        openModal(html);
+
+        document.querySelectorAll('.color-chip').forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                currentColor = e.target.getAttribute('data-color');
+                modalOverlay.classList.remove('active');
+            });
+        });
+    });
+
+    toolSize.addEventListener('click', () => {
+        isEraser = false;
+        isStampMode = false;
+        updateActiveTool(toolSize);
+
+        let html = `
+            <p style="text-align:center; font-weight:bold;">ペンの太さ: <span id="size-val">${currentSize}</span>px</p>
+            <input type="range" id="modal-size-range" min="2" max="60" value="${currentSize}" style="width:100%; margin:20px 0;">
+        `;
+        openModal(html);
+
+        const range = document.getElementById('modal-size-range');
+        const sizeVal = document.getElementById('size-val');
+        range.addEventListener('input', (e) => {
+            currentSize = e.target.value;
+            sizeVal.textContent = currentSize;
+        });
+    });
+
+    toolEraser.addEventListener('click', () => {
+        isEraser = true;
+        isStampMode = false;
+        updateActiveTool(toolEraser);
+    });
+
+    toolStamp.addEventListener('click', () => {
+        isEraser = false;
+        isStampMode = true;
+        updateActiveTool(toolStamp);
+
+        const stamps = ['⭐', '❤️', '🔥', '🎉', '🌸', '👍', '🐱', '🐶', '✨'];
+        let html = '<p style="text-align:center; font-weight:bold;">スタンプを選択</p><div class="stamp-grid">';
+        stamps.forEach(s => {
+            html += `<div class="stamp-item" data-stamp="${s}">${s}</div>`;
+        });
+        html += '</div>';
+
+        openModal(html);
+
+        document.querySelectorAll('.stamp-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                selectedStamp = e.target.getAttribute('data-stamp');
+                modalOverlay.classList.remove('active');
+            });
+        });
+    });
+
+    function updateActiveTool(activeBtn) {
+        [toolColor, toolSize, toolEraser, toolStamp].forEach(btn => btn.classList.remove('active-tool'));
+        activeBtn.classList.add('active-tool');
+    }
+
+    // 4. キャンバス描画・スタンプ操作
     function getEventPos(e) {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
@@ -114,51 +301,54 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    function startDrawing(e) {
-        isDrawing = true;
+    function startAction(e) {
         const pos = getEventPos(e);
-        ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
+
+        if (isStampMode) {
+            ctx.font = '80px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(selectedStamp, pos.x, pos.y);
+        } else {
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
         e.preventDefault();
     }
 
-    function draw(e) {
-        if (!isDrawing) return;
+    function drawAction(e) {
+        if (!isDrawing || isStampMode) return;
         const pos = getEventPos(e);
 
         ctx.lineTo(pos.x, pos.y);
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.lineWidth = penSizeInput.value;
+        ctx.lineWidth = currentSize;
 
         if (isEraser) {
             ctx.strokeStyle = '#FFFFFF';
         } else {
-            ctx.strokeStyle = penColorInput.value;
+            ctx.strokeStyle = currentColor;
         }
 
         ctx.stroke();
         e.preventDefault();
     }
 
-    function stopDrawing() {
+    function stopAction() {
         isDrawing = false;
     }
 
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    window.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mousedown', startAction);
+    canvas.addEventListener('mousemove', drawAction);
+    window.addEventListener('mouseup', stopAction);
 
-    canvas.addEventListener('touchstart', startDrawing, { passive: false });
-    canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchstart', startAction, { passive: false });
+    canvas.addEventListener('touchmove', drawAction, { passive: false });
+    canvas.addEventListener('touchend', stopAction);
 
-    eraserBtn.addEventListener('click', () => {
-        isEraser = !isEraser;
-        eraserBtn.style.backgroundColor = isEraser ? '#ff3366' : '#555';
-    });
-
-    clearBtn.addEventListener('click', () => {
+    toolClear.addEventListener('click', () => {
         if (confirm('落書きをすべて消去しますか？')) {
             redrawCanvas();
         }
