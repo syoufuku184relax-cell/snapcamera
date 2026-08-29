@@ -9,7 +9,9 @@
 <body>
 
     <div class="app-container">
+        <!-- メインコンテンツエリア -->
         <main>
+            <!-- カメラプレビュー画面 -->
             <div id="camera-container" class="view active">
                 <video id="camera-stream" autoplay playsinline muted></video>
                 <div class="camera-controls">
@@ -18,31 +20,30 @@
                 </div>
             </div>
 
+            <!-- お絵描き・編集画面 -->
             <div id="editor-container" class="view">
+                <!-- 9:16キャンバス -->
                 <canvas id="paint-canvas" width="1080" height="1920"></canvas>
                 
-                <div class="icon-toolbar">
-                    <button id="tool-color" class="icon-btn" title="カラー">🎨</button>
-                    <button id="tool-size" class="icon-btn" title="ペンの太さ">✒️</button>
-                    <button id="tool-eraser" class="icon-btn" title="消しゴム">🧹</button>
-                    <button id="tool-stamp" class="icon-btn" title="スタンプ">⭐</button>
-                    <button id="tool-clear" class="icon-btn" title="リセット">🗑️</button>
+                <!-- お絵描きツールバー -->
+                <div class="paint-tools">
+                    <div class="tool-group">
+                        <label>色: <input type="color" id="pen-color" value="#ff3366"></label>
+                        <label>太さ: <input type="range" id="pen-size" min="2" max="50" value="8"></label>
+                    </div>
+                    <div class="tool-group">
+                        <button id="eraser-btn" class="btn small">消しゴム</button>
+                        <button id="clear-btn" class="btn small">リセット</button>
+                    </div>
                 </div>
 
+                <!-- 完了・再撮影ボタン -->
                 <div class="editor-controls">
                     <button id="retake-btn" class="btn secondary">撮り直す</button>
                     <button id="save-btn" class="btn primary">画像を保存</button>
                 </div>
             </div>
         </main>
-    </div>
-
-    <div id="modal-overlay" class="modal-overlay">
-        <div class="modal-content">
-            <div id="modal-body">
-                </div>
-            <button id="modal-close-btn" class="btn primary">閉じる</button>
-        </div>
     </div>
 
     <script src="app.js"></script>
