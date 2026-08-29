@@ -24,15 +24,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let capturedImageObj = null;
 
     // 1. カメラ起動処理
-    async function startCamera() {
+      async function startCamera() {
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
+        // 比率の固定を外し、カメラのデフォルトに任せる
         const constraints = {
             video: {
-                facingMode: useFrontCamera ? 'user' : 'environment',
-                aspectRatio: { ideal: 3/4 }
+                facingMode: useFrontCamera ? 'user' : 'environment'
             },
             audio: false
         };
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error('カメラの起動に失敗しました:', err);
-            alert('カメラへのアクセスが許可されていないか、利用できません。');
+            alert('カメラの起動に失敗しました: ' + err.name); // エラー内容を画面に出す
         }
     }
 
