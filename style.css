@@ -33,7 +33,7 @@ main {
     flex-direction: column;
 }
 
-/* 画面切り替え用クラス（全体を上に寄せ、下部に余裕を持たせる） */
+/* 画面切り替え用クラス */
 .view {
     position: absolute;
     top: 0;
@@ -44,7 +44,7 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    padding: 8px 12px 40px 12px; /* 下部のパディングを増やしてボタンを上へ押し上げる */
+    padding: 8px 12px 30px 12px;
     gap: 8px;
 }
 
@@ -56,15 +56,26 @@ main {
 #camera-stream {
     width: 100%;
     flex: 1;
-    max-height: calc(100vh - 120px); /* 画面からはみ出さないよう制限 */
+    max-height: calc(100vh - 120px);
     object-fit: cover;
     border-radius: 12px;
     background-color: #000;
+    touch-action: none; /* ピンチ操作の邪魔をしないようタッチ挙動を制御 */
 }
 
 /* インカメラ時の左右反転クラス */
 .camera-mirrored {
     transform: scaleX(-1);
+}
+
+/* カメラ上のミニコントロールエリア（切替・フラッシュ） */
+.top-camera-tools {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 8px;
+    z-index: 10;
 }
 
 .camera-controls {
@@ -77,7 +88,7 @@ main {
 /* エディター画面（キャンバス）のスタイル */
 #paint-canvas {
     width: 100%;
-    max-height: 52vh; /* キャンバスの高さを少し抑えてボタンのためのスペースを確保 */
+    max-height: 55vh;
     object-fit: contain;
     background-color: #ffffff;
     border-radius: 8px;
@@ -85,41 +96,125 @@ main {
     touch-action: none;
 }
 
-/* ツールバーのスタイル */
-.paint-tools {
+/* アイコンツールバーのスタイル */
+.icon-toolbar {
     width: 100%;
     background-color: #2a2a2a;
-    padding: 6px 10px;
+    padding: 8px;
     border-radius: 8px;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    justify-content: space-around;
+    align-items: center;
 }
 
-.tool-group {
+.icon-btn {
+    background: #3a3a3a;
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+    cursor: pointer;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    font-size: 0.85rem;
+    justify-content: center;
+    color: #fff;
+    transition: background 0.2s;
 }
 
-.tool-group label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+/* 1/2サイズのアイコンボタン用 */
+.icon-btn.half-size {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.icon-btn.active-tool {
+    background-color: #ff3366 !important;
+}
+
+.icon-btn:active {
+    opacity: 0.8;
 }
 
 .editor-controls {
     width: 100%;
     display: flex;
     gap: 12px;
-    margin-bottom: 8px; /* ボタンの下に余白を確保 */
+    margin-bottom: 4px;
+}
+
+/* モーダルポップアップのスタイル */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: #252525;
+    padding: 24px;
+    border-radius: 12px;
+    width: 85%;
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+#modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.palette-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.color-chip {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    cursor: pointer;
+}
+
+.stamp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    text-align: center;
+}
+
+.stamp-item {
+    font-size: 2rem;
+    background: #333;
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
 }
 
 /* 共通ボタンスタイル */
 .btn {
     flex: 1;
-    padding: 10px; /* 高さを少しコンパクトにして押しやすく調整 */
+    padding: 10px;
     border: none;
     border-radius: 8px;
     font-size: 0.95rem;
@@ -135,13 +230,6 @@ main {
 
 .btn.secondary {
     background-color: #444;
-    color: #fff;
-}
-
-.btn.small {
-    padding: 4px 10px;
-    font-size: 0.8rem;
-    background-color: #555;
     color: #fff;
 }
 
