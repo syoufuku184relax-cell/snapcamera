@@ -53,19 +53,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSize = 10;
     let capturedImageObj = null;
 
-    // 指定されたメンカラパレット（色名・短縮表示付き）
+    // 指定されたメンカラパレット（正式名称表示、パステル・エメグリのみ短縮）
     const customColorPalette = [
-        { name: '白', short: '白', hex: '#FFFFFF' },
-        { name: '赤', short: '赤', hex: '#FF0000' },
-        { name: '青', short: '青', hex: '#0000FF' },
-        { name: '黄', short: '黄', hex: '#FFFF00' },
-        { name: '紫', short: '紫', hex: '#FF00FF' },
-        { name: '緑', short: '緑', hex: '#00FF00' },
-        { name: 'ピンク', short: 'ピnk', hex: '#FF69B4' },
-        { name: 'オレンジ', short: 'オラ', hex: '#FFA500' },
-        { name: 'パステルブルー', short: 'パス', hex: '#ADD8E6' },
-        { name: 'エメラルドグリーン', short: 'エメ', hex: '#50C878' },
-        { name: '黒', short: '黒', hex: '#000000' }
+        { name: '白', displayName: '白', hex: '#FFFFFF' },
+        { name: '赤', displayName: '赤', hex: '#FF0000' },
+        { name: '青', displayName: '青', hex: '#0000FF' },
+        { name: '黄', displayName: '黄', hex: '#FFFF00' },
+        { name: '紫', displayName: '紫', hex: '#FF00FF' },
+        { name: '緑', displayName: '緑', hex: '#00FF00' },
+        { name: 'ピンク', displayName: 'ピンク', hex: '#FF69B4' },
+        { name: 'オレンジ', displayName: 'オレンジ', hex: '#FFA500' },
+        { name: 'パステルブルー', displayName: 'パステル', hex: '#ADD8E6' },
+        { name: 'エメラルドグリーン', displayName: 'エメグリ', hex: '#50C878' },
+        { name: '黒', displayName: '黒', hex: '#000000' }
     ];
 
     // 複数登録可能なアイドルリストの管理 (localStorageから復元)
@@ -99,15 +99,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     updateActiveBadge();
 
-    // 1. カメラ起動処理（フォールバック機能付き）
+    // 1. カメラ起動処理
     async function startCamera() {
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        // カメラ権限チェック
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('お使いのブラウザ・環境ではカメラ機能（getUserMedia）がサポートされていないか、HTTPSでアクセスされていない可能性があります。');
+            alert('お使いのブラウザ・環境ではカメラ機能がサポートされていないか、HTTPSでアクセスされていない可能性があります。');
             return;
         }
 
@@ -133,20 +132,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 flashBtn.style.display = 'flex';
             }
         } catch (err) {
-            console.warn('詳細設定でのカメラ起動に失敗。デフォルト設定で再試行します:', err);
-            // 互換性のためのフォールバック処理
             try {
                 currentStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 videoElement.srcObject = currentStream;
                 await videoElement.play();
             } catch (fallbackErr) {
                 console.error('カメラの起動に失敗しました:', fallbackErr);
-                alert(`カメラのアクセスに失敗しました:\n${fallbackErr.name} - ${fallbackErr.message}\n\n・カメラの利用許可が「拒否」されていないか確認してください。\n・他のアプリでカメラが使用中ではないか確認してください。`);
+                alert(`カメラのアクセスに失敗しました:\n${fallbackErr.message}`);
             }
         }
     }
 
-    // 設定ボタン：複数登録可能な設定画面を表示
+    // 設定ボタン：複数登録設定画面を表示
     settingsBtn.addEventListener('click', () => {
         openSettingsModal();
     });
@@ -168,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="setting-group">
                         <label>メンカラ</label>
                         <select id="new-color">
-                            ${customColorPalette.map(c => `<option value="${c.hex}">${c.name} (${c.short})</option>`).join('')}
+                            ${customColorPalette.map(c => `<option value="${c.hex}">${c.name} (${c.displayName})</option>`).join('')}
                         </select>
                     </div>
                     <button id="add-idol-btn" class="btn primary" style="padding:6px; font-size:0.85rem; margin-top:4px;">リストに追加</button>
@@ -202,13 +199,15 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             idolList.push(newItem);
-            if (!activeIdolId) {
-                activeIdolId = newItem.id;
-                currentColor = newItem.color;
-            }
+            activeIdolId = newItem.id;
+            currentColor = newItem.color;
+
             saveIdolData();
             renderIdolListInModal();
             updateActiveBadge();
+
+            document.getElementById('new-group').value = '';
+            document.getElementById('new-idol').value = '';
         });
     }
 
@@ -223,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         container.innerHTML = idolList.map(item => `
             <div class="idol-list-item ${item.id === activeIdolId ? 'selected' : ''}" style="border-left-color: ${item.color};" data-id="${item.id}">
-                <div class="idol-info select-target" data-id="${item.id}">
+                <div class="idol-info" style="pointer-events: none;">
                     <strong style="color:#fff;">${item.group || '(グループなし)'}</strong>
                     <span style="color:#ccc;">${item.idol || '(名前なし)'}</span>
                 </div>
@@ -233,18 +232,23 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `).join('');
 
-        container.querySelectorAll('.select-target').forEach(el => {
+        // リスト全体のタップで切り替え（削除ボタン以外）
+        container.querySelectorAll('.idol-list-item').forEach(el => {
             el.addEventListener('click', (e) => {
-                const id = Number(e.currentTarget.getAttribute('data-id'));
+                if (e.target.classList.contains('delete-btn')) return; // 削除ボタンの場合はスキップ
+
+                const id = Number(el.getAttribute('data-id'));
                 activeIdolId = id;
                 const active = getActiveIdol();
                 currentColor = active.color;
+
                 saveIdolData();
                 renderIdolListInModal();
                 updateActiveBadge();
             });
         });
 
+        // 削除ボタン
         container.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -449,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalOverlay.classList.remove('active');
     });
 
+    // カラーパレット表示（正式名称＋指定の2つのみ短縮表示）
     toolColor.addEventListener('click', () => {
         isEraser = false;
         isStampMode = false;
@@ -459,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
             html += `
                 <div class="color-chip-wrapper" data-color="${c.hex}">
                     <div class="color-chip" style="background-color: ${c.hex};"></div>
-                    <span class="color-label">${c.name}<br>(${c.short})</span>
+                    <span class="color-label">${c.displayName}</span>
                 </div>
             `;
         });
