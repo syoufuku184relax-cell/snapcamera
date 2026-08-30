@@ -432,3 +432,12 @@ html, body {
     gap: 10px;
     margin-top: 15px;
 }
+
+/* ★ アルバム画像および拡大表示画像で長押し保存を許可する設定 */
+.album-item img,
+.lightbox-content img {
+    -webkit-touch-callout: default !important; /* iOSでの長押しメニュー許可 */
+    -webkit-user-select: auto !important;
+    user-select: auto !important;
+    pointer-events: auto !important;
+}
