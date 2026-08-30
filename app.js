@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const designPreviewContainer = document.getElementById('design-preview-container');
     const albumContainer = document.getElementById('album-container');
 
-    // 画像・キャンバス要素
+    // 画像・描画要素
     const videoElement = document.getElementById('camera-stream');
     const countdownOverlay = document.getElementById('countdown-overlay');
     const capturePreviewImg = document.getElementById('capture-preview-img');
@@ -28,11 +28,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const captureRetakeBtn = document.getElementById('capture-retake-btn');
     const captureOkBtn = document.getElementById('capture-ok-btn');
-    const editorPreviewBtn = document.getElementById('editor-preview-btn');
+    const editorCompleteBtn = document.getElementById('editor-complete-btn');
     const designRedrawBtn = document.getElementById('design-redraw-btn');
     const designSaveBtn = document.getElementById('design-save-btn');
 
-    // アルバム・モーダル
+    // アルバム・モーダル要素
     const albumOpenBtn = document.getElementById('album-open-btn');
     const albumBackBtn = document.getElementById('album-back-btn');
     const albumGrid = document.getElementById('album-grid');
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxDownloadBtn = document.getElementById('lightbox-download-btn');
     const lightboxDeleteBtn = document.getElementById('lightbox-delete-btn');
 
-    // ツール
+    // ツールバー要素
     const toolColor = document.getElementById('tool-color');
     const toolSize = document.getElementById('tool-size');
     const toolEraser = document.getElementById('tool-eraser');
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalBody = document.getElementById('modal-body');
     const modalCloseBtn = document.getElementById('modal-close-btn');
 
-    // 変数保持
+    // アプリ状態
     let currentStream = null;
     let useFrontCamera = true;
     let flashOn = false;
@@ -67,10 +67,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedStamp = '⭐';
     let penSize = 25;
     let eraserSize = 15;
+    let capturedDataUrl = '';
     let capturedImageObj = null;
     let currentSerialNo = '';
     let currentSelectedAlbumItem = null;
 
+    // 定義済みのパレットカラー
     const customColorPalette = [
         { name: '白', displayName: '白', hex: '#FFFFFF' },
         { name: '赤', displayName: '赤', hex: '#FF0000' },
@@ -83,13 +85,16 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: '黒', displayName: '黒', hex: '#000000' }
     ];
 
+    // ストレージデータの取得
     let groups = JSON.parse(localStorage.getItem('cheki_groups')) || ['サンプルグループ'];
     let currentGroup = localStorage.getItem('cheki_current_group') || groups[0] || '';
     let idolList = JSON.parse(localStorage.getItem('cheki_idol_list')) || [
-        { id: 1, group: 'サンプルグループ', idol: '推しメン名前', color: '#FF0000' }
+        { id: 1, group: 'サンプルグループ', idol: '推しメン名前', color: '#FF3366' }
     ];
     let activeIdolId = Number(localStorage.getItem('cheki_active_idol_id')) || (idolList.length > 0 ? idolList[0].id : null);
     let albumPhotos = JSON.parse(localStorage.getItem('cheki_album_photos')) || [];
+
+    let selectedNewColor = customColorPalette[1].hex; // 追加モーダル用初期色
 
     function switchScreen(targetScreen) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -108,11 +113,19 @@ document.addEventListener('DOMContentLoaded', () => {
             activeIdolBadge.textContent = `選択: ${active.group} / ${active.idol}`;
             activeIdolBadge.style.borderColor = active.color;
         } else {
-            activeIdolBadge.textContent = '選択: なし';
+            activeIdolBadge.textContent = '選択: なし (タップして設定)';
             activeIdolBadge.style.borderColor = 'rgba(255,255,255,0.3)';
         }
     }
     updateActiveBadge();
+
+    function saveData() {
+        localStorage.setItem('cheki_groups', JSON.stringify(groups));
+        localStorage.setItem('cheki_current_group', currentGroup);
+        localStorage.setItem('cheki_idol_list', JSON.stringify(idolList));
+        localStorage.setItem('cheki_active_idol_id', activeIdolId);
+        localStorage.setItem('cheki_album_photos', JSON.stringify(albumPhotos));
+    }
 
     function generateUniqueSerial() {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -121,11 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return code;
     }
 
+    // ★ メンカラをチェキ外枠フレームに使用して描画
     function redrawCanvas() {
         if (!canvas || !ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const active = getActiveIdol();
 
+        // メンカラをチェキ外枠フレームの背景色として塗りつぶし
         ctx.fillStyle = active.color || '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -159,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.restore();
         }
 
+        // フレーム色（メンカラ）の明暗に応じてテキスト色を自動切替
         const hex = (active.color || '#FFFFFF').replace('#', '');
         const r = parseInt(hex.substring(0, 2), 16) || 255;
         const g = parseInt(hex.substring(2, 4), 16) || 255;
@@ -209,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 撮影 ➔ 撮影プレビュー ---
+    // --- ステップ1: 撮影 ➔ 撮影プレビュー ---
     function processCapture() {
         const vWidth = videoElement.videoWidth || 640;
         const vHeight = videoElement.videoHeight || 480;
@@ -224,13 +240,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         tempCtx.drawImage(videoElement, 0, 0, vWidth, vHeight);
 
-        const dataUrl = tempCanvas.toDataURL('image/png');
+        capturedDataUrl = tempCanvas.toDataURL('image/png');
         capturedImageObj = new Image();
         capturedImageObj.onload = () => {
-            capturePreviewImg.src = dataUrl;
+            capturePreviewImg.src = capturedDataUrl;
             switchScreen(capturePreviewContainer);
         };
-        capturedImageObj.src = dataUrl;
+        capturedImageObj.src = capturedDataUrl;
     }
 
     if (captureBtn) {
@@ -259,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 撮り直し ➔ 撮影に戻る
+    // 撮り直す ➔ 撮影に戻る
     if (captureRetakeBtn) {
         captureRetakeBtn.addEventListener('click', () => {
             switchScreen(cameraContainer);
@@ -267,9 +283,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 保存してデザインモードに移行
+    // ★ ステップ2: アルバムに保存してデザインモードへ
     if (captureOkBtn) {
         captureOkBtn.addEventListener('click', () => {
+            // 撮影写真（加工前）をアルバムに保存
+            albumPhotos.unshift({
+                id: Date.now(),
+                url: capturedDataUrl,
+                date: new Date().toLocaleDateString()
+            });
+            saveData();
+
+            // デザイン領域初期化
             canvas.width = 1080;
             canvas.height = 1920;
             doodleCanvas.width = canvas.width;
@@ -282,23 +307,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- デザイン ➔ デザインプレビュー表示 ---
-    if (editorPreviewBtn) {
-        editorPreviewBtn.addEventListener('click', () => {
+    // ★ ステップ3: デザインの「完了」ボタン ➔ 完成プレビュー画面へ
+    if (editorCompleteBtn) {
+        editorCompleteBtn.addEventListener('click', () => {
             redrawCanvas();
             designPreviewImg.src = canvas.toDataURL('image/png');
             switchScreen(designPreviewContainer);
         });
     }
 
-    // 描画直し ➔ デザインモードに戻る
+    // 描き直す ➔ デザインモードに戻る
     if (designRedrawBtn) {
         designRedrawBtn.addEventListener('click', () => {
             switchScreen(editorContainer);
         });
     }
 
-    // 保存 ➔ アルバム登録 ➔ 撮影モードに戻る
+    // ★ ステップ4: アルバムに保存して撮影モードへ
     if (designSaveBtn) {
         designSaveBtn.addEventListener('click', () => {
             const dataURL = canvas.toDataURL('image/png');
@@ -307,14 +332,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const safeIdol = active.idol ? `${active.idol}_` : '';
             const fileName = `cheki_${safeGroup}${safeIdol}${currentSerialNo}.png`;
 
+            // デザイン後チェキをアルバムに保存
             albumPhotos.unshift({
                 id: Date.now(),
                 url: dataURL,
                 serial: currentSerialNo,
                 date: new Date().toLocaleDateString()
             });
-            localStorage.setItem('cheki_album_photos', JSON.stringify(albumPhotos));
+            saveData();
 
+            // ブラウザダウンロード
             const link = document.createElement('a');
             link.download = fileName;
             link.href = dataURL;
@@ -326,7 +353,135 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // タイマー切替
+    // ★ 設定・メンバー追加モーダル機能
+    activeIdolBadge.addEventListener('click', openSettingsModal);
+    if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
+
+    function openSettingsModal() {
+        let groupOptions = groups.map(g => `<option value="${g}" ${g === currentGroup ? 'selected' : ''}>${g}</option>`).join('');
+        groupOptions += `<option value="__NEW__">＋ 新規グループ追加</option>`;
+
+        let paletteHtml = customColorPalette.map(c => `
+            <div class="color-chip-wrapper setting-color-chip ${c.hex === selectedNewColor ? 'selected' : ''}" data-color="${c.hex}">
+                <div class="color-chip" style="background-color: ${c.hex};"></div>
+                <span class="color-label">${c.displayName}</span>
+            </div>
+        `).join('');
+
+        let html = `
+            <p style="text-align:center; font-weight:bold; margin-bottom:12px;">設定・メンバー登録</p>
+            
+            <div class="setting-section">
+                <span class="setting-label">① グループ選択</span>
+                <select id="group-select" class="setting-select">${groupOptions}</select>
+                <div id="new-group-box" style="display:none;">
+                    <input type="text" id="new-group-input" class="setting-input" placeholder="新しいグループ名">
+                </div>
+            </div>
+
+            <div class="setting-section">
+                <span class="setting-label">② メンバー追加</span>
+                <input type="text" id="new-idol-input" class="setting-input" placeholder="アイドル名 (例: まい)">
+                <span style="font-size:0.7rem; color:#ccc;">メンカラ (外枠フレームの色になります)</span>
+                <div class="palette-grid">${paletteHtml}</div>
+                <button id="add-idol-btn" class="btn primary" style="width:100%; margin-top:10px; padding:8px;">追加する</button>
+            </div>
+
+            <div style="margin-top:10px;">
+                <span class="setting-label">③ メンバー選択 (タップで決定)</span>
+                <div id="modal-idol-list" style="max-height:160px; overflow-y:auto;"></div>
+            </div>
+        `;
+        openModal(html);
+        renderIdolItemsInModal();
+
+        const groupSelect = document.getElementById('group-select');
+        const newGroupBox = document.getElementById('new-group-box');
+
+        groupSelect.addEventListener('change', (e) => {
+            if (e.target.value === '__NEW__') {
+                newGroupBox.style.display = 'block';
+            } else {
+                newGroupBox.style.display = 'none';
+                currentGroup = e.target.value;
+                saveData();
+                renderIdolItemsInModal();
+            }
+        });
+
+        document.querySelectorAll('.setting-color-chip').forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                document.querySelectorAll('.setting-color-chip').forEach(c => c.classList.remove('selected'));
+                e.currentTarget.classList.add('selected');
+                selectedNewColor = e.currentTarget.getAttribute('data-color');
+            });
+        });
+
+        document.getElementById('add-idol-btn').addEventListener('click', () => {
+            let targetGroup = currentGroup;
+            if (groupSelect.value === '__NEW__') {
+                const newG = document.getElementById('new-group-input').value.trim();
+                if (!newG) return alert('グループ名を入力してください');
+                targetGroup = newG;
+                if (!groups.includes(targetGroup)) groups.push(targetGroup);
+                currentGroup = targetGroup;
+            }
+
+            const name = document.getElementById('new-idol-input').value.trim();
+            if (!name) return alert('アイドル名を入力してください');
+
+            const newItem = { id: Date.now(), group: targetGroup, idol: name, color: selectedNewColor };
+            idolList.push(newItem);
+            activeIdolId = newItem.id;
+            currentColor = newItem.color;
+
+            saveData();
+            openSettingsModal();
+            updateActiveBadge();
+        });
+    }
+
+    function renderIdolItemsInModal() {
+        const container = document.getElementById('modal-idol-list');
+        if (!container) return;
+        const filtered = idolList.filter(i => i.group === currentGroup);
+        if (filtered.length === 0) {
+            container.innerHTML = '<p style="font-size:0.75rem; color:#888; text-align:center;">メンバーが登録されていません</p>';
+            return;
+        }
+
+        container.innerHTML = filtered.map(item => `
+            <div class="idol-select-item" style="padding:8px; border-left:4px solid ${item.color}; background:${item.id === activeIdolId ? '#444' : '#2a2a2a'}; margin-bottom:4px; border-radius:4px; cursor:pointer; display:flex; justify-size:space-between; align-items:center;" data-id="${item.id}">
+                <div><strong>${item.idol}</strong></div>
+                <button class="btn danger del-idol-btn" data-id="${item.id}" style="padding:2px 8px; font-size:0.65rem;">削除</button>
+            </div>
+        `).join('');
+
+        container.querySelectorAll('.idol-select-item').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (e.target.classList.contains('del-idol-btn')) return;
+                activeIdolId = Number(el.getAttribute('data-id'));
+                currentColor = getActiveIdol().color;
+                saveData();
+                updateActiveBadge();
+                modalOverlay.classList.remove('active');
+            });
+        });
+
+        container.querySelectorAll('.del-idol-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = Number(btn.getAttribute('data-id'));
+                idolList = idolList.filter(i => i.id !== id);
+                if (activeIdolId === id) activeIdolId = idolList.length > 0 ? idolList[0].id : null;
+                saveData();
+                renderIdolItemsInModal();
+                updateActiveBadge();
+            });
+        });
+    }
+
+    // カメラ各種制御
     if (timerBtn) {
         timerBtn.addEventListener('click', () => {
             if (timerSeconds === 0) { timerSeconds = 3; timerBadge.textContent = '3秒'; timerBtn.classList.add('active-tool'); }
@@ -336,7 +491,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // カメラ切替
     if (switchCameraBtn) {
         switchCameraBtn.addEventListener('click', () => {
             useFrontCamera = !useFrontCamera;
@@ -346,7 +500,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // フラッシュ切替
     if (flashBtn) {
         flashBtn.addEventListener('click', async () => {
             if (!currentStream) return;
@@ -361,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 描画関連イベント
+    // 描画関連
     function getEventPos(e) {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
@@ -511,7 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (modalCloseBtn) modalCloseBtn.addEventListener('click', () => modalOverlay.classList.remove('active'));
 
-    // アルバム表示
+    // アルバム操作
     if (albumOpenBtn) {
         albumOpenBtn.addEventListener('click', () => {
             renderAlbumGrid();
@@ -565,57 +718,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentSelectedAlbumItem) return;
             if (confirm('削除しますか？')) {
                 albumPhotos = albumPhotos.filter(p => p.id !== currentSelectedAlbumItem.id);
-                localStorage.setItem('cheki_album_photos', JSON.stringify(albumPhotos));
+                saveData();
                 lightboxModal.classList.remove('active');
                 renderAlbumGrid();
             }
-        });
-    }
-
-    // 設定モーダル
-    activeIdolBadge.addEventListener('click', openSettingsModal);
-    if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
-
-    function openSettingsModal() {
-        let groupOptions = groups.map(g => `<option value="${g}" ${g === currentGroup ? 'selected' : ''}>${g}</option>`).join('');
-        let html = `
-            <p style="text-align:center; font-weight:bold;">推しメン選択</p>
-            <div style="margin-top:15px;">
-                <label style="font-size:0.8rem;">グループ選択</label>
-                <select id="group-select" style="width:100%; padding:8px; margin-top:4px; border-radius:6px; background:#333; color:#fff; border:1px solid #555;">${groupOptions}</select>
-            </div>
-            <div id="modal-idol-list" style="margin-top:15px; max-height:200px; overflow-y:auto;"></div>
-        `;
-        openModal(html);
-
-        const groupSelect = document.getElementById('group-select');
-        groupSelect.addEventListener('change', (e) => {
-            currentGroup = e.target.value;
-            localStorage.setItem('cheki_current_group', currentGroup);
-            renderIdolItems();
-        });
-
-        renderIdolItems();
-    }
-
-    function renderIdolItems() {
-        const container = document.getElementById('modal-idol-list');
-        if (!container) return;
-        const filtered = idolList.filter(i => i.group === currentGroup);
-        container.innerHTML = filtered.map(item => `
-            <div class="idol-select-item" style="padding:10px; border-left:4px solid ${item.color}; background:#333; margin-bottom:6px; border-radius:4px; cursor:pointer;" data-id="${item.id}">
-                <strong>${item.idol}</strong>
-            </div>
-        `).join('');
-
-        container.querySelectorAll('.idol-select-item').forEach(el => {
-            el.addEventListener('click', () => {
-                activeIdolId = Number(el.getAttribute('data-id'));
-                currentColor = getActiveIdol().color;
-                localStorage.setItem('cheki_active_idol_id', activeIdolId);
-                updateActiveBadge();
-                modalOverlay.classList.remove('active');
-            });
         });
     }
 
