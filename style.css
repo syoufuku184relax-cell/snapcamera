@@ -1,456 +1,263 @@
-/* 基本リセットとレイアウト */
+/* --- リセット & 基本設定 --- */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: #121212;
-    color: #ffffff;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background-color: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #fff;
 }
 
-.app-container {
-    width: 100%;
-    max-width: 480px;
-    height: 100%;
-    max-height: 100vh;
-    display: flex;
+/* --- 画面（スクリーンの共通非表示・切り替え設定） --- */
+.screen {
+    display: none; /* ★ 非アクティブ時は非表示にして重なりを防止 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    background-color: #000;
     flex-direction: column;
-    background-color: #1e1e1e;
-    position: relative;
-    overflow: hidden;
 }
 
-main {
-    flex: 1;
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+.screen.active {
+    display: flex; /* ★ active クラスがついている画面のみ表示 */
 }
 
-.view {
+/* --- ボタン共通クラス --- */
+.btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.btn:active { opacity: 0.7; }
+.btn.primary { background-color: #ff3366; color: #fff; }
+.btn.secondary { background-color: #444; color: #fff; }
+.btn.danger { background-color: #e63946; color: #fff; }
+
+.icon-btn {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+/* --- 1. カメラ画面 --- */
+#camera-container {
+    position: relative;
+    justify-content: space-between;
+}
+
+#camera-stream {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px;
-    overflow: hidden;
-}
-
-.view.active {
-    display: flex;
-}
-
-#camera-stream {
-    width: 100%;
-    flex: 1;
     object-fit: cover;
-    border-radius: 12px;
-    background-color: #000;
-    touch-action: none;
-    min-height: 0;
+    z-index: -1;
 }
 
 .camera-mirrored {
     transform: scaleX(-1);
 }
 
-.countdown-overlay {
+#countdown-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     font-size: 6rem;
     font-weight: bold;
-    color: #ffffff;
-    text-shadow: 0 4px 16px rgba(0,0,0,0.8);
+    color: #fff;
+    text-shadow: 0 0 20px rgba(0,0,0,0.8);
     pointer-events: none;
-    z-index: 20;
 }
 
-.top-camera-tools {
+#active-idol-badge {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    display: flex;
-    gap: 6px;
-    z-index: 10;
-}
-
-/* 選択中アイドルバッジ */
-.active-idol-badge {
-    position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 6px 12px;
+    border: 2px solid #fff;
+    padding: 6px 16px;
     border-radius: 20px;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: bold;
-    z-index: 10;
-    max-width: 55%;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    z-index: 10;
 }
 
-.camera-controls {
-    width: 100%;
+.camera-controls-top {
     display: flex;
-    gap: 12px;
-    padding-top: 8px;
-    flex-shrink: 0;
+    justify-content: space-between;
+    padding: 16px;
+    z-index: 10;
 }
 
-.preview-wrapper {
+.camera-controls-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 20px 16px 30px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    z-index: 10;
+}
+
+.shutter-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: #fff;
+    border: 4px solid #ff3366;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    cursor: pointer;
+}
+
+#timer-btn {
+    position: relative;
+}
+
+#timer-badge {
+    position: absolute;
+    bottom: -4px;
+    font-size: 0.6rem;
+    background: #ff3366;
+    padding: 1px 4px;
+    border-radius: 8px;
+}
+
+/* --- 2. プレビュー画面 --- */
+#preview-container {
+    justify-content: space-between;
+    padding: 20px 16px;
+    align-items: center;
+}
+
+.preview-box {
     flex: 1;
     width: 100%;
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     overflow: hidden;
-    min-height: 0;
-    padding: 4px 0;
 }
 
-.cheki-frame {
-    background-color: #ffffff;
-    height: 100%;
+.preview-box img {
+    max-width: 100%;
     max-height: 100%;
-    aspect-ratio: 9 / 16;
-    padding: 3% 4% 12% 4%;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 4px;
+    object-fit: contain;
+    border-radius: 8px;
 }
 
-#preview-img {
+.preview-controls {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    background-color: #000;
+    display: flex;
+    justify-content: space-around;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.preview-controls button {
+    flex: 1;
+}
+
+/* --- 3. デザイン・編集画面 --- */
+#editor-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: #1a1a1a;
 }
 
 .canvas-wrapper {
     flex: 1;
     width: 100%;
     display: flex;
-    justify-content: center;
     align-items: center;
-    min-height: 0;
-    padding: 4px 0;
-    overflow: hidden;
+    justify-content: center;
+    min-height: 0; /* 高さはみ出し防止 */
+    margin-bottom: 10px;
 }
 
 #paint-canvas {
-    height: 100%;
+    max-width: 100%;
     max-height: 100%;
     aspect-ratio: 9 / 16;
     object-fit: contain;
-    background-color: #ffffff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    touch-action: none;
+    background: #fff;
 }
 
-.icon-toolbar {
+.editor-toolbar {
     width: 100%;
-    background-color: #2a2a2a;
-    padding: 8px;
-    border-radius: 8px;
     display: flex;
     justify-content: space-around;
-    align-items: center;
-    flex-shrink: 0;
-    margin: 6px 0;
+    background: #2a2a2a;
+    padding: 8px 4px;
+    border-radius: 12px;
+    margin-bottom: 10px;
 }
 
-.icon-btn {
-    background: #3a3a3a;
+.tool-btn {
+    background: transparent;
     border: none;
-    border-radius: 50%;
-    width: 42px;
-    height: 42px;
+    color: #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     font-size: 1.1rem;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    transition: background 0.2s;
-    position: relative;
-    flex-shrink: 0;
+    flex: 1;
 }
 
-.icon-btn.half-size {
-    width: 34px;
-    height: 34px;
-    font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+.tool-btn span {
+    font-size: 0.65rem;
+    margin-top: 2px;
 }
 
-.timer-badge {
-    position: absolute;
-    bottom: -4px;
-    right: -4px;
-    background: #ff3366;
-    color: #fff;
-    font-size: 0.5rem;
-    padding: 1px 3px;
-    border-radius: 3px;
+.tool-btn.active-tool {
+    color: #ff3366;
     font-weight: bold;
 }
 
-.icon-btn.active-tool {
-    background-color: #ff3366 !important;
-}
-
-.icon-btn:active {
-    opacity: 0.8;
-}
-
-.editor-controls {
+.editor-bottom-bar {
     width: 100%;
     display: flex;
-    gap: 12px;
-    flex-shrink: 0;
-}
-
-/* 設定モーダル・リスト用スタイル */
-.settings-container {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-height: 60vh;
-    overflow-y: auto;
-    padding-right: 4px;
-}
-
-.setting-form-box {
-    background: #2a2a2a;
-    padding: 12px;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.setting-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    text-align: left;
-}
-
-.setting-group label {
-    font-size: 0.75rem;
-    font-weight: bold;
-    color: #ccc;
-}
-
-.setting-group input, .setting-group select {
-    width: 100%;
-    padding: 6px 8px;
-    background: #333;
-    border: 1px solid #555;
-    border-radius: 6px;
-    color: #fff;
-    font-size: 0.9rem;
-}
-
-.setting-group input[type="color"] {
-    height: 36px;
-    padding: 2px;
-    cursor: pointer;
-}
-
-.idol-list-box {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.idol-list-item {
-    background: #333;
-    padding: 8px 10px;
-    border-radius: 6px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-left: 6px solid #ff3366;
-    cursor: pointer;
-}
-
-.idol-list-item.selected {
-    background: #442233;
-    border: 1px solid #ff3366;
-}
-
-.idol-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 0.85rem;
-    text-align: left;
-}
-
-.idol-actions {
-    display: flex;
-    gap: 6px;
-}
-
-.action-sm-btn {
-    background: #555;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    cursor: pointer;
-}
-
-.action-sm-btn.danger {
-    background: #993333;
-}
-
-/* パレットグリッド (色名・短縮表示付き) */
-.palette-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    max-height: 50vh;
-    overflow-y: auto;
-}
-
-.color-chip-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    cursor: pointer;
-    background: #333;
-    padding: 6px;
-    border-radius: 6px;
-}
-
-.color-chip {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 2px solid #fff;
-}
-
-.color-label {
-    font-size: 0.7rem;
-    color: #ddd;
-    text-align: center;
-}
-
-.stamp-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    text-align: center;
-}
-
-.stamp-item {
-    font-size: 2rem;
-    background: #333;
-    border-radius: 8px;
-    padding: 8px;
-    cursor: pointer;
-}
-
-/* モーダルポップアップのスタイル */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal-overlay.active {
-    display: flex;
-}
-
-.modal-content {
-    background: #252525;
-    padding: 20px;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 340px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-}
-
-#modal-body {
-    display: flex;
-    flex-direction: column;
     gap: 10px;
 }
 
-.btn {
+.editor-bottom-bar button {
     flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-weight: bold;
-    cursor: pointer;
-    text-align: center;
 }
 
-.btn.primary {
-    background-color: #ff3366;
-    color: #fff;
-}
-
-.btn.secondary {
-    background-color: #444;
-    color: #fff;
-}
-
-.btn:active {
-    opacity: 0.8;
-}
-/* --- 既存スタイルに追加するアルバム関連スタイル --- */
-
-/* アルバム画面全体 */
+/* --- 4. アルバム画面 --- */
 #album-container {
     background-color: #121212;
-    display: flex;
-    flex-direction: column;
-    color: #fff;
 }
 
 .album-header {
@@ -463,7 +270,7 @@ main {
 }
 
 .album-header h2 {
-    font-size: 1.1rem;
+    font-size: 1rem;
     margin: 0;
 }
 
@@ -481,7 +288,7 @@ main {
     color: #ccc;
     padding: 6px 12px;
     border-radius: 20px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     cursor: pointer;
 }
 
@@ -491,25 +298,23 @@ main {
     border-color: #ff3366;
 }
 
-/* 1/4サイズ固定のグリッドレイアウト（4列） */
 .album-grid {
     flex: 1;
     overflow-y: auto;
     padding: 8px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 横4列固定＝幅の1/4 */
+    grid-template-columns: repeat(4, 1fr); /* 横4列(1/4サイズ固定) */
     gap: 6px;
     align-content: start;
 }
 
 .album-item {
     position: relative;
-    aspect-ratio: 3 / 4; /* チェキ風アスペクト比 */
-    border-radius: 6px;
+    aspect-ratio: 9 / 16;
+    border-radius: 4px;
     overflow: hidden;
     background: #2a2a2a;
     cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
 .album-item img {
@@ -518,77 +323,127 @@ main {
     object-fit: cover;
 }
 
-/* 加工前/加工後タグ */
 .album-tag {
     position: absolute;
-    bottom: 3px;
-    right: 3px;
-    font-size: 0.55rem;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-weight: bold;
+    bottom: 2px;
+    right: 2px;
+    font-size: 0.5rem;
+    padding: 1px 3px;
+    border-radius: 2px;
     color: #fff;
+    font-weight: bold;
 }
+
 .album-tag.edited { background: rgba(255, 51, 102, 0.85); }
 .album-tag.raw { background: rgba(0, 150, 255, 0.85); }
 
-/* 全画面表示 (ライトボックス) モーダル */
-.lightbox-overlay {
+/* --- モーダル (ポップアップ & ライトボックス) --- */
+.modal-overlay, .lightbox-overlay {
     display: none;
     position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: rgba(0, 0, 0, 0.92);
-    z-index: 2000;
-    flex-direction: column;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
     justify-content: center;
     align-items: center;
     padding: 16px;
 }
 
-.lightbox-overlay.active {
+.modal-overlay.active, .lightbox-overlay.active {
     display: flex;
 }
 
-.lightbox-close {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: #fff;
-    font-size: 1.5rem;
-    width: 40px; height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    z-index: 2010;
+.modal-card {
+    background: #222;
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+    max-width: 360px;
+    position: relative;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
-.lightbox-content {
-    max-width: 100%;
-    max-height: 85vh;
+.modal-close, .lightbox-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    color: #aaa;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.palette-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.color-chip-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
+    cursor: pointer;
+}
+
+.color-chip {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid #555;
+}
+
+.color-label {
+    font-size: 0.65rem;
+    margin-top: 4px;
+    color: #ccc;
+}
+
+.stamp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.stamp-item {
+    font-size: 2rem;
+    text-align: center;
+    padding: 10px;
+    background: #333;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.lightbox-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+    max-height: 90vh;
 }
 
 .lightbox-content img {
     max-width: 100%;
     max-height: 70vh;
     object-fit: contain;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border-radius: 6px;
 }
 
 .lightbox-info {
-    margin-top: 10px;
+    margin: 10px 0;
+    font-size: 0.8rem;
     color: #ccc;
-    font-size: 0.85rem;
     text-align: center;
 }
 
 .lightbox-actions {
     display: flex;
-    gap: 12px;
-    margin-top: 15px;
+    gap: 10px;
 }
