@@ -123,6 +123,74 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(`cheki_serials_${todayStr}`, JSON.stringify(usedSerials));
         return code;
     }
+    // --- チェキ画像再描画 ---
+    function redrawCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const active = getActiveIdol();
+
+        // 1. フレーム全体の背景（メンカラ）
+        ctx.fillStyle = active.color || '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 2. 撮影画像（上部に余白を空けて描画）
+        if (capturedImageObj) {
+            const frameLeft = 60;
+            const frameTop = 100;
+            const targetWidth = canvas.width - (frameLeft * 2); // 960px
+            const targetHeight = 1400; // 写真領域の高さ
+
+            const imgAspect = capturedImageObj.width / capturedImageObj.height;
+            const targetAspect = targetWidth / targetHeight;
+
+            let dWidth, dHeight, dx, dy;
+            if (imgAspect > targetAspect) {
+                dHeight = targetHeight;
+                dWidth = targetHeight * imgAspect;
+                dx = frameLeft - (dWidth - targetWidth) / 2;
+                dy = frameTop;
+            } else {
+                dWidth = targetWidth;
+                dHeight = targetWidth / imgAspect;
+                dx = frameLeft;
+                dy = frameTop + (targetHeight - dHeight) / 2;
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(frameLeft, frameTop, targetWidth, targetHeight);
+            ctx.clip(); // 写真エリア外へのはみ出しをカット
+            ctx.drawImage(capturedImageObj, dx, dy, dWidth, dHeight);
+            ctx.restore();
+        }
+
+        // 3. テキスト描画（下部エリア）
+        const hex = (active.color || '#FFFFFF').replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16) || 255;
+        const g = parseInt(hex.substring(2, 4), 16) || 255;
+        const b = parseInt(hex.substring(4, 6), 16) || 255;
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        ctx.fillStyle = brightness > 128 ? '#111111' : '#FFFFFF';
+
+        // グループ名 & アイドル名 (下部左)
+        if (active.group || active.idol) {
+            ctx.font = 'bold 44px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            const textString = `${active.group} ${active.idol}`.trim();
+            ctx.fillText(textString, 60, canvas.height - 120);
+        }
+
+        // 日付 & 識別番号 (下部右)
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+        ctx.font = '34px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`${dateStr}  #${currentSerialNo}`, canvas.width - 60, canvas.height - 120);
+
+        // 4. 手書き落書きレイヤーを重ねる
+        ctx.drawImage(doodleCanvas, 0, 0);
+    }
 
     // 1. カメラ起動処理
     async function startCamera() {
