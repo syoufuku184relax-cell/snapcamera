@@ -123,6 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(`cheki_serials_${todayStr}`, JSON.stringify(usedSerials));
         return code;
     }
+
     // --- チェキ画像再描画 ---
     function redrawCanvas() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -542,83 +543,6 @@ document.addEventListener('DOMContentLoaded', () => {
         editorContainer.classList.add('active');
     });
 
-    // ★ 全体描画処理（背景・画像・テキストを描画後に落書きレイヤーを重ねる）
-    function redrawCanvas() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const active = getActiveIdol();
-
-        // 1. フレーム背景（メンカラ）
-        ctx.fillStyle = active.color || '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 2. 撮影画像
-        if (capturedImageObj) {
-            const frameLeft = 30;
-            const frameTop = 80;
-            const frameRight = 30;
-            const frameBottom = 280;
-
-            const targetWidth = canvas.width - (frameLeft + frameRight);
-            const targetHeight = canvas.height - (frameTop + frameBottom);
-
-            const imgAspect = capturedImageObj.width / capturedImageObj.height;
-            const targetAspect = targetWidth / targetHeight;
-
-            let dWidth, dHeight, dx, dy;
-
-            if (imgAspect > targetAspect) {
-                dWidth = targetWidth;
-                dHeight = targetWidth / imgAspect;
-                dx = frameLeft;
-                dy = frameTop + (targetHeight - dHeight) / 2;
-            } else {
-                dHeight = targetHeight;
-                dWidth = targetHeight * imgAspect;
-                dx = frameLeft + (targetWidth - dWidth) / 2;
-                dy = frameTop;
-            }
-
-            ctx.drawImage(capturedImageObj, dx, dy, dWidth, dHeight);
-        }
-
-        // 3. フレーム上の情報（グループ名・アイドル名・日付・認識番号）
-        const hex = (active.color || '#FFFFFF').replace('#', '');
-        const r = parseInt(hex.substring(0, 2), 16) || 255;
-        const g = parseInt(hex.substring(2, 4), 16) || 255;
-        const b = parseInt(hex.substring(4, 6), 16) || 255;
-        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        
-        // メンカラの明暗に合わせて視認性の良い文字色を判定
-        const textColor = brightness > 128 ? '#111111' : '#FFFFFF';
-        ctx.fillStyle = textColor;
-
-        // グループ名 & アイドル名 (下部左)
-        if (active.group || active.idol) {
-            ctx.font = 'bold 42px sans-serif';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'bottom';
-            const textString = `${active.group} ${active.idol}`.trim();
-            ctx.fillText(textString, 50, canvas.height - 110);
-        }
-
-        // 日付 & 認識番号 (下部右)
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const dateStr = `${year}.${month}.${day}`;
-        const serialStr = `#${currentSerialNo}`;
-
-        ctx.font = '32px sans-serif';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(`${dateStr}  ${serialStr}`, canvas.width - 50, canvas.height - 110);
-
-        // 4. 落書きレイヤーを上に合成
-        ctx.drawImage(doodleCanvas, 0, 0);
-    }
-
     // 3. モーダル＆お絵描きツール設定
     function openModal(htmlContent) {
         modalBody.innerHTML = htmlContent;
@@ -827,4 +751,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // 初期起動
     startCamera();
 });
-
