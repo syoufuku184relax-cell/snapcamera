@@ -1,3 +1,7 @@
+    function redrawCanvas() {
+        if (!canvas) return; // キャンバスが存在しない場合は処理を抜ける
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ...
 document.addEventListener('DOMContentLoaded', () => {
     // 要素の取得
     const cameraContainer = document.getElementById('camera-container');
@@ -748,6 +752,18 @@ document.addEventListener('DOMContentLoaded', () => {
         link.click();
     });
 
+    // ★ 画面表示の初期化関数
+    function initScreen() {
+        // すべての画面から active を外す
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        
+        // カメラ画面だけを表示
+        cameraContainer.classList.add('active');
+        
+        // カメラ起動
+        startCamera();
+    }
+
     // 初期起動
-    startCamera();
+    initScreen();
 });
