@@ -18,7 +18,7 @@ html, body {
 
 /* --- 画面（スクリーンの共通非表示・切り替え設定） --- */
 .screen {
-    display: none; /* ★ 非アクティブ時は非表示にして重なりを防止 */
+    display: none !important; /* ★ 他のスタイルより確実に非表示を優先 */
     position: fixed;
     top: 0;
     left: 0;
@@ -30,7 +30,7 @@ html, body {
 }
 
 .screen.active {
-    display: flex; /* ★ active クラスがついている画面のみ表示 */
+    display: flex !important; /* ★ active 時のみ表示 */
 }
 
 /* --- ボタン共通クラス --- */
@@ -185,8 +185,6 @@ html, body {
 
 /* --- 3. デザイン・編集画面 --- */
 #editor-container {
-    display: flex;
-    flex-direction: column;
     justify-content: space-between;
     align-items: center;
     padding: 10px;
@@ -199,7 +197,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 0; /* 高さはみ出し防止 */
+    min-height: 0;
     margin-bottom: 10px;
 }
 
@@ -303,7 +301,7 @@ html, body {
     overflow-y: auto;
     padding: 8px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 横4列(1/4サイズ固定) */
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
     align-content: start;
 }
