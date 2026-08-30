@@ -13,7 +13,7 @@
         <div id="countdown-overlay"></div>
         <div id="active-idol-badge">選択: なし</div>
 
-        <!-- シャッター以外のすべてのアイコンを上部に集約 -->
+        <!-- 上部コントロールアイコン -->
         <div class="camera-controls-top">
             <button id="settings-btn" class="icon-btn" title="設定">⚙️</button>
             <button id="album-open-btn" class="icon-btn" title="アルバム">🖼️</button>
@@ -22,6 +22,7 @@
             <button id="switch-camera-btn" class="icon-btn" title="カメラ切替">🔄</button>
         </div>
 
+        <!-- 下部シャッターボタン -->
         <div class="camera-controls-bottom">
             <button id="capture-btn" class="shutter-btn"></button>
         </div>
@@ -34,7 +35,7 @@
         </div>
         <div class="preview-controls">
             <button id="capture-retake-btn" class="btn secondary">撮り直す</button>
-            <button id="capture-ok-btn" class="btn primary">デザインへ進む</button>
+            <button id="capture-ok-btn" class="btn primary">アルバムに保存してデザインへ</button>
         </div>
     </div>
 
@@ -53,7 +54,7 @@
         </div>
 
         <div class="editor-bottom-bar">
-            <button id="editor-preview-btn" class="btn primary">プレビュー確認</button>
+            <button id="editor-complete-btn" class="btn primary">完了</button>
         </div>
     </div>
 
@@ -63,8 +64,8 @@
             <img id="design-preview-img" alt="完成デザインプレビュー">
         </div>
         <div class="preview-controls">
-            <button id="design-redraw-btn" class="btn secondary">描画し直す</button>
-            <button id="design-save-btn" class="btn primary">保存して完了</button>
+            <button id="design-redraw-btn" class="btn secondary">描き直す</button>
+            <button id="design-save-btn" class="btn primary">アルバムに保存</button>
         </div>
     </div>
 
@@ -85,13 +86,13 @@
             <img id="lightbox-img" src="" alt="拡大表示">
             <div id="lightbox-info" style="font-size:0.8rem; color:#ccc; margin-top:8px;"></div>
             <div class="lightbox-actions">
-                <button id="lightbox-download-btn" class="btn primary">保存</button>
+                <button id="lightbox-download-btn" class="btn primary">ダウンロード</button>
                 <button id="lightbox-delete-btn" class="btn danger">削除</button>
             </div>
         </div>
     </div>
 
-    <!-- 7. ダイアログ・ポップアップ用モーダル -->
+    <!-- 7. 設定・ダイアログ用モーダル -->
     <div id="modal-overlay" class="modal-overlay">
         <div class="modal-card">
             <button id="modal-close-btn" class="modal-close">✕</button>
