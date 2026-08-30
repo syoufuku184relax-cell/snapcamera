@@ -1,445 +1,149 @@
-/* 基本リセットとレイアウト */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+/* --- 既存スタイルに追加するアルバム関連スタイル --- */
 
-html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+/* アルバム画面全体 */
+#album-container {
     background-color: #121212;
-    color: #ffffff;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.app-container {
-    width: 100%;
-    max-width: 480px;
-    height: 100%;
-    max-height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: #1e1e1e;
-    position: relative;
-    overflow: hidden;
+    color: #fff;
 }
 
-main {
-    flex: 1;
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-}
-
-.view {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: none;
-    flex-direction: column;
+.album-header {
+    display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px;
-    overflow: hidden;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.view.active {
-    display: flex;
+.album-header h2 {
+    font-size: 1.1rem;
+    margin: 0;
 }
 
-#camera-stream {
-    width: 100%;
-    flex: 1;
-    object-fit: cover;
-    border-radius: 12px;
-    background-color: #000;
-    touch-action: none;
-    min-height: 0;
-}
-
-.camera-mirrored {
-    transform: scaleX(-1);
-}
-
-.countdown-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+.album-tabs {
     display: flex;
     justify-content: center;
-    align-items: center;
-    font-size: 6rem;
-    font-weight: bold;
-    color: #ffffff;
-    text-shadow: 0 4px 16px rgba(0,0,0,0.8);
-    pointer-events: none;
-    z-index: 20;
+    gap: 8px;
+    padding: 10px;
+    background: #1e1e1e;
 }
 
-.top-camera-tools {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    display: flex;
-    gap: 6px;
-    z-index: 10;
-}
-
-/* 選択中アイドルバッジ */
-.active-idol-badge {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+.album-tab {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ccc;
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 0.8rem;
-    font-weight: bold;
-    z-index: 10;
-    max-width: 55%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    cursor: pointer;
 }
 
-.camera-controls {
-    width: 100%;
-    display: flex;
-    gap: 12px;
-    padding-top: 8px;
-    flex-shrink: 0;
+.album-tab.active {
+    background: #ff3366;
+    color: #fff;
+    border-color: #ff3366;
 }
 
-.preview-wrapper {
+/* 1/4サイズ固定のグリッドレイアウト（4列） */
+.album-grid {
     flex: 1;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    overflow-y: auto;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 横4列固定＝幅の1/4 */
+    gap: 6px;
+    align-content: start;
+}
+
+.album-item {
+    position: relative;
+    aspect-ratio: 3 / 4; /* チェキ風アスペクト比 */
+    border-radius: 6px;
     overflow: hidden;
-    min-height: 0;
-    padding: 4px 0;
+    background: #2a2a2a;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
-.cheki-frame {
-    background-color: #ffffff;
-    height: 100%;
-    max-height: 100%;
-    aspect-ratio: 9 / 16;
-    padding: 3% 4% 12% 4%;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 4px;
-}
-
-#preview-img {
+.album-item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    background-color: #000;
 }
 
-.canvas-wrapper {
-    flex: 1;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 0;
-    padding: 4px 0;
-    overflow: hidden;
-}
-
-#paint-canvas {
-    height: 100%;
-    max-height: 100%;
-    aspect-ratio: 9 / 16;
-    object-fit: contain;
-    background-color: #ffffff;
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    touch-action: none;
-}
-
-.icon-toolbar {
-    width: 100%;
-    background-color: #2a2a2a;
-    padding: 8px;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    flex-shrink: 0;
-    margin: 6px 0;
-}
-
-.icon-btn {
-    background: #3a3a3a;
-    border: none;
-    border-radius: 50%;
-    width: 42px;
-    height: 42px;
-    font-size: 1.1rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    transition: background 0.2s;
-    position: relative;
-    flex-shrink: 0;
-}
-
-.icon-btn.half-size {
-    width: 34px;
-    height: 34px;
-    font-size: 0.8rem;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.timer-badge {
+/* 加工前/加工後タグ */
+.album-tag {
     position: absolute;
-    bottom: -4px;
-    right: -4px;
-    background: #ff3366;
-    color: #fff;
-    font-size: 0.5rem;
-    padding: 1px 3px;
+    bottom: 3px;
+    right: 3px;
+    font-size: 0.55rem;
+    padding: 2px 4px;
     border-radius: 3px;
     font-weight: bold;
-}
-
-.icon-btn.active-tool {
-    background-color: #ff3366 !important;
-}
-
-.icon-btn:active {
-    opacity: 0.8;
-}
-
-.editor-controls {
-    width: 100%;
-    display: flex;
-    gap: 12px;
-    flex-shrink: 0;
-}
-
-/* 設定モーダル・リスト用スタイル */
-.settings-container {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-height: 60vh;
-    overflow-y: auto;
-    padding-right: 4px;
-}
-
-.setting-form-box {
-    background: #2a2a2a;
-    padding: 12px;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.setting-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    text-align: left;
-}
-
-.setting-group label {
-    font-size: 0.75rem;
-    font-weight: bold;
-    color: #ccc;
-}
-
-.setting-group input, .setting-group select {
-    width: 100%;
-    padding: 6px 8px;
-    background: #333;
-    border: 1px solid #555;
-    border-radius: 6px;
     color: #fff;
-    font-size: 0.9rem;
 }
+.album-tag.edited { background: rgba(255, 51, 102, 0.85); }
+.album-tag.raw { background: rgba(0, 150, 255, 0.85); }
 
-.setting-group input[type="color"] {
-    height: 36px;
-    padding: 2px;
-    cursor: pointer;
-}
-
-.idol-list-box {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.idol-list-item {
-    background: #333;
-    padding: 8px 10px;
-    border-radius: 6px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-left: 6px solid #ff3366;
-    cursor: pointer;
-}
-
-.idol-list-item.selected {
-    background: #442233;
-    border: 1px solid #ff3366;
-}
-
-.idol-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 0.85rem;
-    text-align: left;
-}
-
-.idol-actions {
-    display: flex;
-    gap: 6px;
-}
-
-.action-sm-btn {
-    background: #555;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    cursor: pointer;
-}
-
-.action-sm-btn.danger {
-    background: #993333;
-}
-
-/* パレットグリッド (色名・短縮表示付き) */
-.palette-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    max-height: 50vh;
-    overflow-y: auto;
-}
-
-.color-chip-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    cursor: pointer;
-    background: #333;
-    padding: 6px;
-    border-radius: 6px;
-}
-
-.color-chip {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 2px solid #fff;
-}
-
-.color-label {
-    font-size: 0.7rem;
-    color: #ddd;
-    text-align: center;
-}
-
-.stamp-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    text-align: center;
-}
-
-.stamp-item {
-    font-size: 2rem;
-    background: #333;
-    border-radius: 8px;
-    padding: 8px;
-    cursor: pointer;
-}
-
-/* モーダルポップアップのスタイル */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
+/* 全画面表示 (ライトボックス) モーダル */
+.lightbox-overlay {
     display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.92);
+    z-index: 2000;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    padding: 16px;
 }
 
-.modal-overlay.active {
+.lightbox-overlay.active {
     display: flex;
 }
 
-.modal-content {
-    background: #252525;
-    padding: 20px;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 340px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-}
-
-#modal-body {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.btn {
-    flex: 1;
-    padding: 10px;
+.lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255, 255, 255, 0.2);
     border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-weight: bold;
+    color: #fff;
+    font-size: 1.5rem;
+    width: 40px; height: 40px;
+    border-radius: 50%;
     cursor: pointer;
+    z-index: 2010;
+}
+
+.lightbox-content {
+    max-width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.lightbox-content img {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.lightbox-info {
+    margin-top: 10px;
+    color: #ccc;
+    font-size: 0.85rem;
     text-align: center;
 }
 
-.btn.primary {
-    background-color: #ff3366;
-    color: #fff;
-}
-
-.btn.secondary {
-    background-color: #444;
-    color: #fff;
-}
-
-.btn:active {
-    opacity: 0.8;
+.lightbox-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 15px;
 }
