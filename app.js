@@ -323,29 +323,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (captureOkBtn) {
+     if (captureOkBtn) {
         captureOkBtn.addEventListener('click', () => {
-            albumPhotos.unshift({
-                id: Date.now(),
-                url: capturedDataUrl,
-                date: new Date().toLocaleDateString()
-            });
-            saveData();
+            try {
+                // ローカルストレージ保存（容量オーバー等で停止するのを防ぐ）
+                try {
+                    albumPhotos.unshift({
+                        id: Date.now(),
+                        url: capturedDataUrl,
+                        date: new Date().toLocaleDateString()
+                    });
+                    saveData();
+                } catch (storageErr) {
+                    console.warn('LocalStorage保存警告:', storageErr);
+                }
 
-            canvas.width = 1080;
-            canvas.height = 1920;
-            doodleCanvas.width = canvas.width;
-            doodleCanvas.height = canvas.height;
-            doodleCtx.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+                // キャンバスの初期設定
+                canvas.width = 1080;
+                canvas.height = 1920;
+                doodleCanvas.width = canvas.width;
+                doodleCanvas.height = canvas.height;
+                doodleCtx.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
 
-            placedStamps = [];
-            selectedStampIndex = -1;
+                placedStamps = [];
+                selectedStampIndex = -1;
 
-            currentSerialNo = generateUniqueSerial();
-            redrawCanvas();
-            switchScreen(editorContainer);
+                currentSerialNo = generateUniqueSerial();
+                redrawCanvas();
+                switchScreen(editorContainer);
+            } catch (err) {
+                console.error('デザイン画面への遷移エラー:', err);
+                alert('エラーが発生しました: ' + err.message);
+            }
         });
     }
+   
 
     if (editorCompleteBtn) {
         editorCompleteBtn.addEventListener('click', () => {
