@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('paint-canvas');
     const ctx = canvas.getContext('2d');
 
+    // ★ 落書き専用オフスクリーンキャンバス（画像・文字を消さないためのレイヤー）
+    const doodleCanvas = document.createElement('canvas');
+    const doodleCtx = doodleCanvas.getContext('2d');
+
     const captureBtn = document.getElementById('capture-btn');
     const settingsBtn = document.getElementById('settings-btn');
     const switchCameraBtn = document.getElementById('switch-camera-btn');
@@ -50,8 +54,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let isStampMode = false;
     let selectedStamp = '⭐';
     
-    let currentSize = 10;
+    let penSize = 25; // 初期ペンの太さ: 中 (25)
+    let eraserSize = 15; // 初期消しゴムの太さ: 中 (15)
     let capturedImageObj = null;
+    let currentSerialNo = ''; // 現在のチェキの4桁識別番号
 
     // 指定されたメンカラパレット
     const customColorPalette = [
@@ -95,6 +101,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     updateActiveBadge();
+
+    // ★ 重複しない4桁ランダム英数字を生成する関数
+    function generateUniqueSerial() {
+        const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        let usedSerials = JSON.parse(localStorage.getItem(`cheki_serials_${todayStr}`)) || [];
+
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 誤読しやすいO,0,I,1を除外
+        let code = '';
+        let attempts = 0;
+
+        do {
+            code = '';
+            for (let i = 0; i < 4; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            attempts++;
+        } while (usedSerials.includes(code) && attempts < 1000);
+
+        usedSerials.push(code);
+        localStorage.setItem(`cheki_serials_${todayStr}`, JSON.stringify(usedSerials));
+        return code;
+    }
 
     // 1. カメラ起動処理
     async function startCamera() {
@@ -163,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = `
             <p style="text-align:center; font-weight:bold;">推しメン選択・登録</p>
             <div class="settings-container">
-                <!-- グループ選択/追加エリア -->
                 <div class="setting-form-box">
                     <div class="setting-group">
                         <label>現在選択中のグループ</label>
@@ -174,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
 
-                <!-- メンバー追加エリア（パレット選択） -->
                 <div class="setting-form-box">
                     <p style="font-size:0.8rem; font-weight:bold; color:#ff3366;">メンバーを追加</p>
                     <div class="setting-group">
@@ -190,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button id="add-idol-btn" class="btn primary" style="padding:6px; font-size:0.85rem; margin-top:8px;">追加する</button>
                 </div>
 
-                <!-- メンバー選択リスト -->
                 <div class="idol-list-box">
                     <p style="font-size:0.8rem; font-weight:bold;">メンバー選択 (タップで選択)</p>
                     <div id="idol-items-container" style="display:flex; flex-direction:column; gap:6px;"></div>
@@ -203,7 +228,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const groupSelect = document.getElementById('group-select');
         const newGroupInputBox = document.getElementById('new-group-input-box');
 
-        // グループ切替イベント
         groupSelect.addEventListener('change', (e) => {
             if (e.target.value === '__NEW__') {
                 newGroupInputBox.style.display = 'flex';
@@ -215,7 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // メンカラパレットタップイベント
         document.querySelectorAll('.setting-color-chip').forEach(chip => {
             chip.addEventListener('click', (e) => {
                 selectedNewColor = e.currentTarget.getAttribute('data-color');
@@ -224,7 +247,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // メンバー追加イベント
         document.getElementById('add-idol-btn').addEventListener('click', () => {
             let selectedGroup = currentGroup;
 
@@ -260,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentColor = newItem.color;
 
             saveData();
-            openSelectIdolModal(); // モーダル再描画
+            openSelectIdolModal();
             updateActiveBadge();
         });
     }
@@ -288,7 +310,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `).join('');
 
-        // メンバー選択
         container.querySelectorAll('.idol-list-item').forEach(el => {
             el.addEventListener('click', (e) => {
                 if (e.target.classList.contains('delete-btn')) return;
@@ -305,7 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // 削除ボタン
         container.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -439,31 +459,33 @@ document.addEventListener('DOMContentLoaded', () => {
     previewOkBtn.addEventListener('click', () => {
         canvas.width = 1080;
         canvas.height = 1920;
-        redrawCanvas();
 
-        const dataURL = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        const active = getActiveIdol();
-        const safeGroup = active.group ? `${active.group}_` : '';
-        const safeIdol = active.idol ? `${active.idol}_` : '';
-        link.download = `cheki_${safeGroup}${safeIdol}${Date.now()}.png`;
-        link.href = dataURL;
-        link.click();
+        // 手書き落書き用レイヤーのキャンバスサイズも合わせる
+        doodleCanvas.width = canvas.width;
+        doodleCanvas.height = canvas.height;
+        doodleCtx.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+
+        // 新規のユニーク認識番号を生成
+        currentSerialNo = generateUniqueSerial();
+
+        redrawCanvas();
 
         previewContainer.classList.remove('active');
         editorContainer.classList.add('active');
     });
 
-    // ★ メンバーカラーをフレーム色＆フレーム幅・写真範囲の計算処理
+    // ★ 全体描画処理（背景・画像・テキストを描画後に落書きレイヤーを重ねる）
     function redrawCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
         const active = getActiveIdol();
 
-        // フレーム背景をメンカラに設定（未設定の場合は白）
+        // 1. フレーム背景（メンカラ）
         ctx.fillStyle = active.color || '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // 2. 撮影画像
         if (capturedImageObj) {
-            // 【変更箇所】左右を半分の30pxに、上下の余白も狭めて写真領域を拡張
             const frameLeft = 30;
             const frameTop = 80;
             const frameRight = 30;
@@ -492,23 +514,41 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.drawImage(capturedImageObj, dx, dy, dWidth, dHeight);
         }
 
-        // 下部のアド・名入れ文字（背景が黒や暗い色の時のため文字色を白／黒に判別）
+        // 3. フレーム上の情報（グループ名・アイドル名・日付・認識番号）
+        const hex = (active.color || '#FFFFFF').replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16) || 255;
+        const g = parseInt(hex.substring(2, 4), 16) || 255;
+        const b = parseInt(hex.substring(4, 6), 16) || 255;
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        
+        // メンカラの明暗に合わせて視認性の良い文字色を判定
+        const textColor = brightness > 128 ? '#111111' : '#FFFFFF';
+        ctx.fillStyle = textColor;
+
+        // グループ名 & アイドル名 (下部左)
         if (active.group || active.idol) {
-            const hex = (active.color || '#FFFFFF').replace('#', '');
-            const r = parseInt(hex.substring(0, 2), 16) || 255;
-            const g = parseInt(hex.substring(2, 4), 16) || 255;
-            const b = parseInt(hex.substring(4, 6), 16) || 255;
-            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-            
-            ctx.fillStyle = brightness > 128 ? '#111111' : '#FFFFFF';
             ctx.font = 'bold 42px sans-serif';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'bottom';
-            
             const textString = `${active.group} ${active.idol}`.trim();
-            // 文字位置も下部枠に合わせて微調整
-            ctx.fillText(textString, 50, canvas.height - 90);
+            ctx.fillText(textString, 50, canvas.height - 110);
         }
+
+        // 日付 & 認識番号 (下部右)
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const dateStr = `${year}.${month}.${day}`;
+        const serialStr = `#${currentSerialNo}`;
+
+        ctx.font = '32px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`${dateStr}  ${serialStr}`, canvas.width - 50, canvas.height - 110);
+
+        // 4. 落書きレイヤーを上に合成
+        ctx.drawImage(doodleCanvas, 0, 0);
     }
 
     // 3. モーダル＆お絵描きツール設定
@@ -521,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modalOverlay.classList.remove('active');
     });
 
-    // カラーパレット表示モーダル
+    // カラーパレットモーダル
     toolColor.addEventListener('click', () => {
         isEraser = false;
         isStampMode = false;
@@ -548,29 +588,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // ★ ペンの太さ選択モーダル（細:10 / 中:25 / 太:45）
     toolSize.addEventListener('click', () => {
         isEraser = false;
         isStampMode = false;
         updateActiveTool(toolSize);
 
         let html = `
-            <p style="text-align:center; font-weight:bold;">ペンの太さ: <span id="size-val">${currentSize}</span>px</p>
-            <input type="range" id="modal-size-range" min="2" max="60" value="${currentSize}" style="width:100%; margin:20px 0;">
+            <p style="text-align:center; font-weight:bold; margin-bottom:15px;">ペンの太さを選択</p>
+            <div style="display:flex; justify-content:space-around; gap:10px;">
+                <button class="btn size-select-btn ${penSize === 10 ? 'primary' : 'secondary'}" data-size="10" style="flex:1; padding:12px 0;">細 (10)</button>
+                <button class="btn size-select-btn ${penSize === 25 ? 'primary' : 'secondary'}" data-size="25" style="flex:1; padding:12px 0;">中 (25)</button>
+                <button class="btn size-select-btn ${penSize === 45 ? 'primary' : 'secondary'}" data-size="45" style="flex:1; padding:12px 0;">太 (45)</button>
+            </div>
         `;
         openModal(html);
 
-        const range = document.getElementById('modal-size-range');
-        const sizeVal = document.getElementById('size-val');
-        range.addEventListener('input', (e) => {
-            currentSize = e.target.value;
-            sizeVal.textContent = currentSize;
+        document.querySelectorAll('.size-select-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                penSize = Number(e.currentTarget.getAttribute('data-size'));
+                modalOverlay.classList.remove('active');
+            });
         });
     });
 
+    // ★ 消しゴムの太さ選択モーダル（中:15 / 太:40）
     toolEraser.addEventListener('click', () => {
         isEraser = true;
         isStampMode = false;
         updateActiveTool(toolEraser);
+
+        let html = `
+            <p style="text-align:center; font-weight:bold; margin-bottom:15px;">消しゴムの太さを選択</p>
+            <div style="display:flex; justify-content:space-around; gap:15px;">
+                <button class="btn eraser-size-btn ${eraserSize === 15 ? 'primary' : 'secondary'}" data-size="15" style="flex:1; padding:12px 0;">中 (15)</button>
+                <button class="btn eraser-size-btn ${eraserSize === 40 ? 'primary' : 'secondary'}" data-size="40" style="flex:1; padding:12px 0;">太 (40)</button>
+            </div>
+        `;
+        openModal(html);
+
+        document.querySelectorAll('.eraser-size-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                eraserSize = Number(e.currentTarget.getAttribute('data-size'));
+                modalOverlay.classList.remove('active');
+            });
+        });
     });
 
     toolStamp.addEventListener('click', () => {
@@ -600,7 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
         activeBtn.classList.add('active-tool');
     }
 
-    // 4. キャンバス描画操作
+    // 4. キャンバス描画操作 (手書きレイヤー: doodleCanvas に描画)
     function getEventPos(e) {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
@@ -619,14 +681,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const pos = getEventPos(e);
 
         if (isStampMode) {
-            ctx.font = '80px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(selectedStamp, pos.x, pos.y);
+            doodleCtx.font = '80px sans-serif';
+            doodleCtx.textAlign = 'center';
+            doodleCtx.textBaseline = 'middle';
+            doodleCtx.fillText(selectedStamp, pos.x, pos.y);
+            redrawCanvas();
         } else {
             isDrawing = true;
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
+            doodleCtx.beginPath();
+            doodleCtx.moveTo(pos.x, pos.y);
         }
         e.preventDefault();
     }
@@ -635,18 +698,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isDrawing || isStampMode) return;
         const pos = getEventPos(e);
 
-        ctx.lineTo(pos.x, pos.y);
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = currentSize;
+        doodleCtx.lineTo(pos.x, pos.y);
+        doodleCtx.lineCap = 'round';
+        doodleCtx.lineJoin = 'round';
 
         if (isEraser) {
-            ctx.strokeStyle = getActiveIdol().color || '#FFFFFF'; // 消しゴム使用時はフレーム色で消す
+            // 元画像を消さずに落書きだけを削る（透明化処理）
+            doodleCtx.globalCompositeOperation = 'destination-out';
+            doodleCtx.lineWidth = eraserSize;
+            doodleCtx.stroke();
+            doodleCtx.globalCompositeOperation = 'source-over';
         } else {
-            ctx.strokeStyle = currentColor;
+            doodleCtx.globalCompositeOperation = 'source-over';
+            doodleCtx.lineWidth = penSize;
+            doodleCtx.strokeStyle = currentColor;
+            doodleCtx.stroke();
         }
 
-        ctx.stroke();
+        redrawCanvas();
         e.preventDefault();
     }
 
@@ -664,6 +733,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     toolClear.addEventListener('click', () => {
         if (confirm('落書きをすべて消去しますか？')) {
+            doodleCtx.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
             redrawCanvas();
         }
     });
@@ -675,12 +745,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     saveBtn.addEventListener('click', () => {
+        redrawCanvas();
         const dataURL = canvas.toDataURL('image/png');
         const link = document.createElement('a');
         const active = getActiveIdol();
         const safeGroup = active.group ? `${active.group}_` : '';
         const safeIdol = active.idol ? `${active.idol}_` : '';
-        link.download = `cheki_${safeGroup}${safeIdol}${Date.now()}.png`;
+        link.download = `cheki_${safeGroup}${safeIdol}${currentSerialNo}.png`;
         link.href = dataURL;
         link.click();
     });
