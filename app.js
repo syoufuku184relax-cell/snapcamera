@@ -153,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let groupOptions = groups.map(g => `<option value="${g}" ${g === currentGroup ? 'selected' : ''}>${g}</option>`).join('');
         groupOptions += `<option value="__NEW__">＋ 新規グループ追加</option>`;
 
-        // パレット状のカラーチップ作成
         let paletteHtml = customColorPalette.map(c => `
             <div class="color-chip-wrapper setting-color-chip ${c.hex === selectedNewColor ? 'selected-chip' : ''}" data-color="${c.hex}" style="cursor:pointer; display:flex; flex-direction:column; align-items:center;">
                 <div class="color-chip" style="background-color: ${c.hex}; width:32px; height:32px; border-radius:50%; border:2px solid ${c.hex === '#FFFFFF' ? '#ccc' : '#fff'};"></div>
@@ -164,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = `
             <p style="text-align:center; font-weight:bold;">推しメン選択・登録</p>
             <div class="settings-container">
+                <!-- グループ選択/追加エリア -->
                 <div class="setting-form-box">
                     <div class="setting-group">
                         <label>現在選択中のグループ</label>
@@ -174,6 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
 
+                <!-- メンバー追加エリア（パレット選択） -->
                 <div class="setting-form-box">
                     <p style="font-size:0.8rem; font-weight:bold; color:#ff3366;">メンバーを追加</p>
                     <div class="setting-group">
@@ -189,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button id="add-idol-btn" class="btn primary" style="padding:6px; font-size:0.85rem; margin-top:8px;">追加する</button>
                 </div>
 
+                <!-- メンバー選択リスト -->
                 <div class="idol-list-box">
                     <p style="font-size:0.8rem; font-weight:bold;">メンバー選択 (タップで選択)</p>
                     <div id="idol-items-container" style="display:flex; flex-direction:column; gap:6px;"></div>
@@ -452,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
         editorContainer.classList.add('active');
     });
 
-    // メンバーカラーをフレーム色にする処理
+    // ★ メンバーカラーをフレーム色＆フレーム幅・写真範囲の計算処理
     function redrawCanvas() {
         const active = getActiveIdol();
 
@@ -461,10 +463,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (capturedImageObj) {
-            const frameLeft = 60;
-            const frameTop = 120;
-            const frameRight = 60;
-            const frameBottom = 350;
+            // 【変更箇所】左右を半分の30pxに、上下の余白も狭めて写真領域を拡張
+            const frameLeft = 30;
+            const frameTop = 80;
+            const frameRight = 30;
+            const frameBottom = 280;
 
             const targetWidth = canvas.width - (frameLeft + frameRight);
             const targetHeight = canvas.height - (frameTop + frameBottom);
@@ -489,9 +492,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.drawImage(capturedImageObj, dx, dy, dWidth, dHeight);
         }
 
-        // 下部のアド・名入れ文字（背景が黒や暗い色の時のため文字色を白／明るく認識）
+        // 下部のアド・名入れ文字（背景が黒や暗い色の時のため文字色を白／黒に判別）
         if (active.group || active.idol) {
-            // 文字色の視認性確保（メンカラが明るい色か暗い色かで判別）
             const hex = (active.color || '#FFFFFF').replace('#', '');
             const r = parseInt(hex.substring(0, 2), 16) || 255;
             const g = parseInt(hex.substring(2, 4), 16) || 255;
@@ -504,7 +506,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.textBaseline = 'bottom';
             
             const textString = `${active.group} ${active.idol}`.trim();
-            ctx.fillText(textString, 80, canvas.height - 120);
+            // 文字位置も下部枠に合わせて微調整
+            ctx.fillText(textString, 50, canvas.height - 90);
         }
     }
 
