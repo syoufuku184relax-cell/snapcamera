@@ -72,7 +72,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSerialNo = '';
     let currentSelectedAlbumItem = null;
 
-    // 定義済みのパレットカラー
+    // ★ スタンプ管理用構造
+    let placedStamps = [];
+    let selectedStampIndex = -1;
+    let isDraggingStamp = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    // パレットカラー
     const customColorPalette = [
         { name: '白', displayName: '白', hex: '#FFFFFF' },
         { name: '赤', displayName: '赤', hex: '#FF0000' },
@@ -85,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { name: '黒', displayName: '黒', hex: '#000000' }
     ];
 
-    // ストレージデータの取得
+    // ストレージデータ取得
     let groups = JSON.parse(localStorage.getItem('cheki_groups')) || ['サンプルグループ'];
     let currentGroup = localStorage.getItem('cheki_current_group') || groups[0] || '';
     let idolList = JSON.parse(localStorage.getItem('cheki_idol_list')) || [
@@ -94,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeIdolId = Number(localStorage.getItem('cheki_active_idol_id')) || (idolList.length > 0 ? idolList[0].id : null);
     let albumPhotos = JSON.parse(localStorage.getItem('cheki_album_photos')) || [];
 
-    let selectedNewColor = customColorPalette[1].hex; // 追加モーダル用初期色
+    let selectedNewColor = customColorPalette[1].hex;
 
     function switchScreen(targetScreen) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -134,16 +141,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return code;
     }
 
-    // ★ メンカラをチェキ外枠フレームに使用して描画
+    // ★ キャンバス全体の再描画（背景・写真・枠・文字・ドゥードゥル・スタンプオブジェクト）
     function redrawCanvas() {
         if (!canvas || !ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const active = getActiveIdol();
 
-        // メンカラをチェキ外枠フレームの背景色として塗りつぶし
+        // 1. チェキフレーム（メンカラ）
         ctx.fillStyle = active.color || '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // 2. 撮影写真描画
         if (capturedImageObj) {
             const frameLeft = 60;
             const frameTop = 100;
@@ -174,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.restore();
         }
 
-        // フレーム色（メンカラ）の明暗に応じてテキスト色を自動切替
+        // 3. テキスト描画
         const hex = (active.color || '#FFFFFF').replace('#', '');
         const r = parseInt(hex.substring(0, 2), 16) || 255;
         const g = parseInt(hex.substring(2, 4), 16) || 255;
@@ -196,7 +204,41 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.textBaseline = 'bottom';
         ctx.fillText(`${dateStr}  #${currentSerialNo}`, canvas.width - 60, canvas.height - 120);
 
+        // 4. 手描きドゥードゥルの合成
         ctx.drawImage(doodleCanvas, 0, 0);
+
+        // 5. ★ スタンプオブジェクトの個別描画・操作UIの描画
+        placedStamps.forEach((s, idx) => {
+            ctx.font = `${s.size}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(s.char, s.x, s.y);
+
+            // 選択中スタンプの枠線と削除（✖）ボタンの描画
+            if (idx === selectedStampIndex) {
+                const half = s.size / 2;
+                ctx.save();
+                ctx.strokeStyle = '#ff3366';
+                ctx.lineWidth = 4;
+                ctx.setLineDash([8, 6]);
+                ctx.strokeRect(s.x - half - 10, s.y - half - 10, s.size + 20, s.size + 20);
+                ctx.restore();
+
+                // 削除（✖）ボタンアイコン
+                const btnX = s.x + half + 10;
+                const btnY = s.y - half - 10;
+                ctx.fillStyle = '#e63946';
+                ctx.beginPath();
+                ctx.arc(btnX, btnY, 22, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('✕', btnX, btnY);
+            }
+        });
     }
 
     async function startCamera() {
@@ -225,7 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- ステップ1: 撮影 ➔ 撮影プレビュー ---
     function processCapture() {
         const vWidth = videoElement.videoWidth || 640;
         const vHeight = videoElement.videoHeight || 480;
@@ -275,7 +316,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 撮り直す ➔ 撮影に戻る
     if (captureRetakeBtn) {
         captureRetakeBtn.addEventListener('click', () => {
             switchScreen(cameraContainer);
@@ -283,10 +323,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ★ ステップ2: アルバムに保存してデザインモードへ
     if (captureOkBtn) {
         captureOkBtn.addEventListener('click', () => {
-            // 撮影写真（加工前）をアルバムに保存
             albumPhotos.unshift({
                 id: Date.now(),
                 url: capturedDataUrl,
@@ -294,12 +332,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             saveData();
 
-            // デザイン領域初期化
             canvas.width = 1080;
             canvas.height = 1920;
             doodleCanvas.width = canvas.width;
             doodleCanvas.height = canvas.height;
             doodleCtx.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+
+            placedStamps = [];
+            selectedStampIndex = -1;
 
             currentSerialNo = generateUniqueSerial();
             redrawCanvas();
@@ -307,32 +347,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ★ ステップ3: デザインの「完了」ボタン ➔ 完成プレビュー画面へ
     if (editorCompleteBtn) {
         editorCompleteBtn.addEventListener('click', () => {
+            // 完成プレビュー時は選択中の外枠・削除ボタンを除外して描画
+            const tempSelected = selectedStampIndex;
+            selectedStampIndex = -1;
             redrawCanvas();
+
             designPreviewImg.src = canvas.toDataURL('image/png');
+            selectedStampIndex = tempSelected;
             switchScreen(designPreviewContainer);
         });
     }
 
-    // 描き直す ➔ デザインモードに戻る
     if (designRedrawBtn) {
         designRedrawBtn.addEventListener('click', () => {
+            redrawCanvas();
             switchScreen(editorContainer);
         });
     }
 
-    // ★ ステップ4: アルバムに保存して撮影モードへ
     if (designSaveBtn) {
         designSaveBtn.addEventListener('click', () => {
+            selectedStampIndex = -1;
+            redrawCanvas();
+
             const dataURL = canvas.toDataURL('image/png');
             const active = getActiveIdol();
             const safeGroup = active.group ? `${active.group}_` : '';
             const safeIdol = active.idol ? `${active.idol}_` : '';
             const fileName = `cheki_${safeGroup}${safeIdol}${currentSerialNo}.png`;
 
-            // デザイン後チェキをアルバムに保存
             albumPhotos.unshift({
                 id: Date.now(),
                 url: dataURL,
@@ -341,19 +386,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             saveData();
 
-            // ブラウザダウンロード
             const link = document.createElement('a');
             link.download = fileName;
             link.href = dataURL;
             link.click();
 
-            // 撮影モードへ復帰
             switchScreen(cameraContainer);
             startCamera();
         });
     }
 
-    // ★ 設定・メンバー追加モーダル機能
+    // 設定・メンバー追加
     activeIdolBadge.addEventListener('click', openSettingsModal);
     if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
 
@@ -451,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         container.innerHTML = filtered.map(item => `
-            <div class="idol-select-item" style="padding:8px; border-left:4px solid ${item.color}; background:${item.id === activeIdolId ? '#444' : '#2a2a2a'}; margin-bottom:4px; border-radius:4px; cursor:pointer; display:flex; justify-size:space-between; align-items:center;" data-id="${item.id}">
+            <div class="idol-select-item" style="padding:8px; border-left:4px solid ${item.color}; background:${item.id === activeIdolId ? '#444' : '#2a2a2a'}; margin-bottom:4px; border-radius:4px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;" data-id="${item.id}">
                 <div><strong>${item.idol}</strong></div>
                 <button class="btn danger del-idol-btn" data-id="${item.id}" style="padding:2px 8px; font-size:0.65rem;">削除</button>
             </div>
@@ -514,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 描画関連
+    // ★ 描画・スタンプ操作イベント（ドラッグ移動・削除判定）
     function getEventPos(e) {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
@@ -526,26 +569,86 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startAction(e) {
         const pos = getEventPos(e);
-        if (isStampMode) {
-            doodleCtx.font = '80px sans-serif';
-            doodleCtx.textAlign = 'center';
-            doodleCtx.textBaseline = 'middle';
-            doodleCtx.fillText(selectedStamp, pos.x, pos.y);
-            redrawCanvas();
-        } else {
-            isDrawing = true;
-            doodleCtx.beginPath();
-            doodleCtx.moveTo(pos.x, pos.y);
+
+        // 1. 選択中スタンプの削除（✖）ボタンタップ判定
+        if (selectedStampIndex !== -1) {
+            const s = placedStamps[selectedStampIndex];
+            const half = s.size / 2;
+            const btnX = s.x + half + 10;
+            const btnY = s.y - half - 10;
+            const dist = Math.hypot(pos.x - btnX, pos.y - btnY);
+
+            if (dist <= 30) {
+                placedStamps.splice(selectedStampIndex, 1);
+                selectedStampIndex = -1;
+                redrawCanvas();
+                e.preventDefault();
+                return;
+            }
         }
+
+        // 2. 既存スタンプのタップ/ドラッグ判定 (後ろから前へ判定)
+        let clickedStampIdx = -1;
+        for (let i = placedStamps.length - 1; i >= 0; i--) {
+            const s = placedStamps[i];
+            const half = s.size / 2;
+            if (pos.x >= s.x - half && pos.x <= s.x + half && pos.y >= s.y - half && pos.y <= s.y + half) {
+                clickedStampIdx = i;
+                break;
+            }
+        }
+
+        if (clickedStampIdx !== -1) {
+            selectedStampIndex = clickedStampIdx;
+            isDraggingStamp = true;
+            dragOffsetX = pos.x - placedStamps[clickedStampIdx].x;
+            dragOffsetY = pos.y - placedStamps[clickedStampIdx].y;
+            redrawCanvas();
+            e.preventDefault();
+            return;
+        }
+
+        // 3. 新規スタンプ配置
+        if (isStampMode) {
+            placedStamps.push({
+                char: selectedStamp,
+                x: pos.x,
+                y: pos.y,
+                size: 90
+            });
+            selectedStampIndex = placedStamps.length - 1;
+            redrawCanvas();
+            e.preventDefault();
+            return;
+        }
+
+        // 4. フリーハンドペン/消しゴム開始
+        selectedStampIndex = -1;
+        isDrawing = true;
+        doodleCtx.beginPath();
+        doodleCtx.moveTo(pos.x, pos.y);
+        redrawCanvas();
         e.preventDefault();
     }
 
     function drawAction(e) {
-        if (!isDrawing || isStampMode) return;
         const pos = getEventPos(e);
+
+        // スタンプのドラッグ移動処理
+        if (isDraggingStamp && selectedStampIndex !== -1) {
+            placedStamps[selectedStampIndex].x = pos.x - dragOffsetX;
+            placedStamps[selectedStampIndex].y = pos.y - dragOffsetY;
+            redrawCanvas();
+            e.preventDefault();
+            return;
+        }
+
+        // ペン・消しゴムの描画処理
+        if (!isDrawing || isStampMode) return;
         doodleCtx.lineTo(pos.x, pos.y);
         doodleCtx.lineCap = 'round';
         doodleCtx.lineJoin = 'round';
+
         if (isEraser) {
             doodleCtx.globalCompositeOperation = 'destination-out';
             doodleCtx.lineWidth = eraserSize;
@@ -561,19 +664,25 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
     }
 
+    function stopAction() {
+        isDrawing = false;
+        isDraggingStamp = false;
+    }
+
     if (canvas) {
         canvas.addEventListener('mousedown', startAction);
         canvas.addEventListener('mousemove', drawAction);
-        window.addEventListener('mouseup', () => isDrawing = false);
+        window.addEventListener('mouseup', stopAction);
+
         canvas.addEventListener('touchstart', startAction, { passive: false });
         canvas.addEventListener('touchmove', drawAction, { passive: false });
-        canvas.addEventListener('touchend', () => isDrawing = false);
+        canvas.addEventListener('touchend', stopAction);
     }
 
     // ツールバー操作
     if (toolColor) {
         toolColor.addEventListener('click', () => {
-            isEraser = false; isStampMode = false; updateActiveTool(toolColor);
+            isEraser = false; isStampMode = false; selectedStampIndex = -1; redrawCanvas(); updateActiveTool(toolColor);
             let html = '<p style="text-align:center; font-weight:bold;">カラーを選択</p><div class="palette-grid">';
             customColorPalette.forEach(c => {
                 html += `<div class="color-chip-wrapper" data-color="${c.hex}"><div class="color-chip" style="background-color: ${c.hex};"></div><span class="color-label">${c.displayName}</span></div>`;
@@ -591,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (toolSize) {
         toolSize.addEventListener('click', () => {
-            isEraser = false; isStampMode = false; updateActiveTool(toolSize);
+            isEraser = false; isStampMode = false; selectedStampIndex = -1; redrawCanvas(); updateActiveTool(toolSize);
             let html = `<p style="text-align:center; font-weight:bold; margin-bottom:15px;">ペンの太さ</p>
                 <div style="display:flex; justify-content:space-around;">
                     <button class="btn size-select-btn secondary" data-size="10">細</button>
@@ -610,7 +719,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (toolEraser) {
         toolEraser.addEventListener('click', () => {
-            isEraser = true; isStampMode = false; updateActiveTool(toolEraser);
+            isEraser = true; isStampMode = false; selectedStampIndex = -1; redrawCanvas(); updateActiveTool(toolEraser);
             let html = `<p style="text-align:center; font-weight:bold; margin-bottom:15px;">消しゴムの太さ</p>
                 <div style="display:flex; justify-content:space-around;">
                     <button class="btn eraser-size-btn primary" data-size="15">中</button>
@@ -645,8 +754,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (toolClear) {
         toolClear.addEventListener('click', () => {
-            if (confirm('落書きをクリアしますか？')) {
+            if (confirm('落書き・スタンプをすべてクリアしますか？')) {
                 doodleCtx.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
+                placedStamps = [];
+                selectedStampIndex = -1;
                 redrawCanvas();
             }
         });
