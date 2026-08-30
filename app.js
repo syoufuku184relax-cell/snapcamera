@@ -379,34 +379,48 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (designSaveBtn) {
+        if (designSaveBtn) {
         designSaveBtn.addEventListener('click', () => {
-            selectedStampIndex = -1;
-            redrawCanvas();
+            try {
+                selectedStampIndex = -1;
+                redrawCanvas();
 
-            const dataURL = canvas.toDataURL('image/png');
-            const active = getActiveIdol();
-            const safeGroup = active.group ? `${active.group}_` : '';
-            const safeIdol = active.idol ? `${active.idol}_` : '';
-            const fileName = `cheki_${safeGroup}${safeIdol}${currentSerialNo}.png`;
+                const dataURL = canvas.toDataURL('image/png');
+                const active = getActiveIdol();
+                const safeGroup = active.group ? `${active.group}_` : '';
+                const safeIdol = active.idol ? `${active.idol}_` : '';
+                const fileName = `cheki_${safeGroup}${safeIdol}${currentSerialNo}.png`;
 
-            albumPhotos.unshift({
-                id: Date.now(),
-                url: dataURL,
-                serial: currentSerialNo,
-                date: new Date().toLocaleDateString()
-            });
-            saveData();
+                // アルバム（LocalStorage）への保存（エラーが出てもダウンロードは続行）
+                try {
+                    albumPhotos.unshift({
+                        id: Date.now(),
+                        url: dataURL,
+                        serial: currentSerialNo,
+                        date: new Date().toLocaleDateString()
+                    });
+                    saveData();
+                } catch (storageErr) {
+                    console.warn('LocalStorage保存警告 (容量制限等):', storageErr);
+                }
 
-            const link = document.createElement('a');
-            link.download = fileName;
-            link.href = dataURL;
-            link.click();
+                // 本体へのファイルダウンロード処理
+                const link = document.createElement('a');
+                link.download = fileName;
+                link.href = dataURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
 
-            switchScreen(cameraContainer);
-            startCamera();
+                switchScreen(cameraContainer);
+                startCamera();
+            } catch (err) {
+                console.error('デザイン保存エラー:', err);
+                alert('保存中にエラーが発生しました: ' + err.message);
+            }
         });
     }
+
 
     // 設定・メンバー追加
     activeIdolBadge.addEventListener('click', openSettingsModal);
@@ -844,6 +858,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveData();
                 lightboxModal.classList.remove('active');
                 renderAlbumGrid();
+            }
+        });
+    }
+    // ★ アルバムリセット（全削除）ボタンの処理
+    const albumResetBtn = document.getElementById('album-reset-btn');
+    if (albumResetBtn) {
+        albumResetBtn.addEventListener('click', () => {
+            if (albumPhotos.length === 0) {
+                alert('削除する写真がありません。');
+                return;
+            }
+            if (confirm('アルバム内の写真をすべて削除してもよろしいですか？（元に戻せません）')) {
+                albumPhotos = [];
+                saveData();
+                renderAlbumGrid();
+                alert('アルバムをリセットしました。');
             }
         });
     }
