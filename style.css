@@ -211,6 +211,7 @@ html, body {
     box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     border-radius: 4px;
     background: #fff;
+    touch-action: none;
 }
 
 .editor-toolbar {
