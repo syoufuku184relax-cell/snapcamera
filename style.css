@@ -8,37 +8,42 @@
 }
 
 html, body {
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* スマホのアドレスバー・メニューバー考慮 */
     overflow: hidden;
     background-color: #000;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #fff;
 }
 
-/* --- 画面（スクリーンの共通非表示・切り替え設定） --- */
+/* --- 画面（スクリーンの共通設定） --- */
 .screen {
-    display: none !important; /* ★ 他のスタイルより確実に非表示を優先 */
+    display: none !important;
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     z-index: 1;
     background-color: #000;
     flex-direction: column;
+    justify-content: space-between;
+    /* 下部ナビゲーションバーやホームバーとの重なりを防止 */
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 
 .screen.active {
-    display: flex !important; /* ★ active 時のみ表示 */
+    display: flex !important;
 }
 
 /* --- ボタン共通クラス --- */
 .btn {
-    padding: 10px 16px;
+    padding: 12px 20px;
     border: none;
-    border-radius: 20px;
-    font-size: 0.9rem;
+    border-radius: 24px;
+    font-size: 0.95rem;
     font-weight: bold;
     cursor: pointer;
     transition: opacity 0.2s;
@@ -52,20 +57,25 @@ html, body {
     background: rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: #fff;
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.1rem;
     cursor: pointer;
+    position: relative;
+}
+
+.icon-btn.active-tool {
+    border-color: #ff3366;
+    color: #ff3366;
 }
 
 /* --- 1. カメラ画面 --- */
 #camera-container {
     position: relative;
-    justify-content: space-between;
 }
 
 #camera-stream {
@@ -96,7 +106,7 @@ html, body {
 
 #active-idol-badge {
     position: absolute;
-    top: 60px;
+    top: 65px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.6);
@@ -109,52 +119,47 @@ html, body {
     z-index: 10;
 }
 
+/* 上部アイコン集約エリア */
 .camera-controls-top {
     display: flex;
-    justify-content: space-between;
-    padding: 16px;
+    justify-content: space-around;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
     z-index: 10;
 }
 
+/* 下部シャッターエリア */
 .camera-controls-bottom {
     display: flex;
     align-items: center;
-    justify-content: space-around;
-    padding: 20px 16px 30px;
-    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    justify-content: center;
+    padding-bottom: 10px;
     z-index: 10;
 }
 
 .shutter-btn {
-    width: 70px;
-    height: 70px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
     background: #fff;
-    border: 4px solid #ff3366;
-    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    border: 5px solid #ff3366;
+    box-shadow: 0 0 12px rgba(0,0,0,0.5);
     cursor: pointer;
-}
-
-#timer-btn {
-    position: relative;
 }
 
 #timer-badge {
     position: absolute;
-    bottom: -4px;
+    bottom: -2px;
+    right: -2px;
     font-size: 0.6rem;
     background: #ff3366;
+    color: #fff;
     padding: 1px 4px;
     border-radius: 8px;
 }
 
-/* --- 2. プレビュー画面 --- */
-#preview-container {
-    justify-content: space-between;
-    padding: 20px 16px;
-    align-items: center;
-}
-
+/* --- 2. プレビュー画面（共通） --- */
 .preview-box {
     flex: 1;
     width: 100%;
@@ -162,6 +167,7 @@ html, body {
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    padding: 10px;
 }
 
 .preview-box img {
@@ -176,7 +182,7 @@ html, body {
     display: flex;
     justify-content: space-around;
     gap: 12px;
-    margin-top: 16px;
+    padding: 0 16px;
 }
 
 .preview-controls button {
@@ -185,8 +191,6 @@ html, body {
 
 /* --- 3. デザイン・編集画面 --- */
 #editor-container {
-    justify-content: space-between;
-    align-items: center;
     padding: 10px;
     background: #1a1a1a;
 }
@@ -256,6 +260,7 @@ html, body {
 /* --- 4. アルバム画面 --- */
 #album-container {
     background-color: #121212;
+    padding-bottom: 0;
 }
 
 .album-header {
@@ -267,35 +272,6 @@ html, body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.album-header h2 {
-    font-size: 1rem;
-    margin: 0;
-}
-
-.album-tabs {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px;
-    background: #1e1e1e;
-}
-
-.album-tab {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #ccc;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    cursor: pointer;
-}
-
-.album-tab.active {
-    background: #ff3366;
-    color: #fff;
-    border-color: #ff3366;
-}
-
 .album-grid {
     flex: 1;
     overflow-y: auto;
@@ -304,6 +280,7 @@ html, body {
     grid-template-columns: repeat(4, 1fr);
     gap: 6px;
     align-content: start;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
 }
 
 .album-item {
@@ -312,7 +289,6 @@ html, body {
     border-radius: 4px;
     overflow: hidden;
     background: #2a2a2a;
-    cursor: pointer;
 }
 
 .album-item img {
@@ -321,21 +297,7 @@ html, body {
     object-fit: cover;
 }
 
-.album-tag {
-    position: absolute;
-    bottom: 2px;
-    right: 2px;
-    font-size: 0.5rem;
-    padding: 1px 3px;
-    border-radius: 2px;
-    color: #fff;
-    font-weight: bold;
-}
-
-.album-tag.edited { background: rgba(255, 51, 102, 0.85); }
-.album-tag.raw { background: rgba(0, 150, 255, 0.85); }
-
-/* --- モーダル (ポップアップ & ライトボックス) --- */
+/* モーダル */
 .modal-overlay, .lightbox-overlay {
     display: none;
     position: fixed;
@@ -343,7 +305,7 @@ html, body {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     z-index: 1000;
     justify-content: center;
     align-items: center;
@@ -434,14 +396,8 @@ html, body {
     border-radius: 6px;
 }
 
-.lightbox-info {
-    margin: 10px 0;
-    font-size: 0.8rem;
-    color: #ccc;
-    text-align: center;
-}
-
 .lightbox-actions {
     display: flex;
     gap: 10px;
+    margin-top: 15px;
 }
