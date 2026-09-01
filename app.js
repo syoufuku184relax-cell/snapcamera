@@ -1,3 +1,12 @@
+// アプリ内ブラウザ（LINE, WebKit内蔵など）で開かれた場合の判定と対応
+const ua = navigator.userAgent.toLowerCase();
+const isInAppBrowser = ua.includes('line') || ua.includes('fbav') || ua.includes('instagram');
+
+if (isInAppBrowser) {
+  // LINEなどの場合、Safari/Chromeで開くためのリンク処理や案内を行う
+  // （iOSの場合、Safariへ直接自動遷移させる外部スキーム等を挟むなどの対応）
+  alert('カメラ機能を利用するため、Safari または Chrome 等の標準ブラウザで開いてください。');
+}
 document.addEventListener('DOMContentLoaded', () => {
 // 画面要素
 const cameraContainer = document.getElementById('camera-container');
