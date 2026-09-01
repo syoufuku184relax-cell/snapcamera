@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const capturePreviewImg = document.getElementById('capture-preview-img');
     const designPreviewImg = document.getElementById('design-preview-img');
     const activeIdolBadge = document.getElementById('active-idol-badge');
-    
+
     const canvas = document.getElementById('paint-canvas');
     const ctx = canvas ? canvas.getContext('2d') : null;
     const doodleCanvas = document.createElement('canvas');
@@ -25,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const flashBtn = document.getElementById('flash-btn');
     const timerBtn = document.getElementById('timer-btn');
     const timerBadge = document.getElementById('timer-badge');
-    
     const captureRetakeBtn = document.getElementById('capture-retake-btn');
     const captureOkBtn = document.getElementById('capture-ok-btn');
     const editorCompleteBtn = document.getElementById('editor-complete-btn');
@@ -60,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let flashOn = false;
     let timerSeconds = 0;
     let isCountingDown = false;
-
     let isDrawing = false;
     let isEraser = false;
     let isStampMode = false;
@@ -100,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     let activeIdolId = Number(localStorage.getItem('cheki_active_idol_id')) || (idolList.length > 0 ? idolList[0].id : null);
     let albumPhotos = JSON.parse(localStorage.getItem('cheki_album_photos')) || [];
-
     let selectedNewColor = customColorPalette[1].hex;
 
     function switchScreen(targetScreen) {
@@ -144,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ★ キャンバス全体の再描画（背景・写真・枠・文字・ドゥードゥル・スタンプオブジェクト）
     function redrawCanvas() {
         if (!canvas || !ctx) return;
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const active = getActiveIdol();
 
@@ -188,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const g = parseInt(hex.substring(2, 4), 16) || 255;
         const b = parseInt(hex.substring(4, 6), 16) || 255;
         const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
         ctx.fillStyle = brightness > 128 ? '#111111' : '#FFFFFF';
 
         if (active.group || active.idol) {
@@ -202,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.font = '34px sans-serif';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(`${dateStr}  #${currentSerialNo}`, canvas.width - 60, canvas.height - 120);
+        ctx.fillText(`${dateStr} #${currentSerialNo}`, canvas.width - 60, canvas.height - 120);
 
         // 4. 手描きドゥードゥルの合成
         ctx.drawImage(doodleCanvas, 0, 0);
@@ -217,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // 選択中スタンプの枠線と削除（✖）ボタンの描画
             if (idx === selectedStampIndex) {
                 const half = s.size / 2;
+
                 ctx.save();
                 ctx.strokeStyle = '#ff3366';
                 ctx.lineWidth = 4;
@@ -270,6 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function processCapture() {
         const vWidth = videoElement.videoWidth || 640;
         const vHeight = videoElement.videoHeight || 480;
+
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = vWidth;
         tempCanvas.height = vHeight;
@@ -279,9 +280,10 @@ document.addEventListener('DOMContentLoaded', () => {
             tempCtx.translate(vWidth, 0);
             tempCtx.scale(-1, 1);
         }
-        tempCtx.drawImage(videoElement, 0, 0, vWidth, vHeight);
 
+        tempCtx.drawImage(videoElement, 0, 0, vWidth, vHeight);
         capturedDataUrl = tempCanvas.toDataURL('image/png');
+
         capturedImageObj = new Image();
         capturedImageObj.onload = () => {
             capturePreviewImg.src = capturedDataUrl;
@@ -300,6 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 captureBtn.disabled = true;
                 let remaining = timerSeconds;
                 countdownOverlay.textContent = remaining;
+
                 const interval = setInterval(() => {
                     remaining--;
                     if (remaining > 0) {
@@ -323,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-     if (captureOkBtn) {
+    if (captureOkBtn) {
         captureOkBtn.addEventListener('click', () => {
             try {
                 // ローカルストレージ保存（容量オーバー等で停止するのを防ぐ）
@@ -357,7 +360,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-   
 
     if (editorCompleteBtn) {
         editorCompleteBtn.addEventListener('click', () => {
@@ -367,6 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
             redrawCanvas();
 
             designPreviewImg.src = canvas.toDataURL('image/png');
+
             selectedStampIndex = tempSelected;
             switchScreen(designPreviewContainer);
         });
@@ -379,13 +382,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-        if (designSaveBtn) {
+    if (designSaveBtn) {
         designSaveBtn.addEventListener('click', () => {
             try {
                 selectedStampIndex = -1;
                 redrawCanvas();
-
                 const dataURL = canvas.toDataURL('image/png');
+
                 const active = getActiveIdol();
                 const safeGroup = active.group ? `${active.group}_` : '';
                 const safeIdol = active.idol ? `${active.idol}_` : '';
@@ -421,7 +424,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
     // 設定・メンバー追加
     activeIdolBadge.addEventListener('click', openSettingsModal);
     if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
@@ -439,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let html = `
             <p style="text-align:center; font-weight:bold; margin-bottom:12px;">設定・メンバー登録</p>
-            
+
             <div class="setting-section">
                 <span class="setting-label">① グループ選択</span>
                 <select id="group-select" class="setting-select">${groupOptions}</select>
@@ -466,7 +468,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const groupSelect = document.getElementById('group-select');
         const newGroupBox = document.getElementById('new-group-box');
-
         groupSelect.addEventListener('change', (e) => {
             if (e.target.value === '__NEW__') {
                 newGroupBox.style.display = 'block';
@@ -503,7 +504,6 @@ document.addEventListener('DOMContentLoaded', () => {
             idolList.push(newItem);
             activeIdolId = newItem.id;
             currentColor = newItem.color;
-
             saveData();
             openSettingsModal();
             updateActiveBadge();
@@ -513,6 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderIdolItemsInModal() {
         const container = document.getElementById('modal-idol-list');
         if (!container) return;
+
         const filtered = idolList.filter(i => i.group === currentGroup);
         if (filtered.length === 0) {
             container.innerHTML = '<p style="font-size:0.75rem; color:#888; text-align:center;">メンバーが登録されていません</p>';
@@ -575,6 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const track = currentStream.getVideoTracks()[0];
             const capabilities = track.getCapabilities ? track.getCapabilities() : {};
             if (!capabilities.torch) return alert('フラッシュ未対応のカメラです。');
+
             try {
                 flashOn = !flashOn;
                 await track.applyConstraints({ advanced: [{ torch: flashOn }] });
@@ -588,9 +590,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
+
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
     }
 
     function startAction(e) {
@@ -671,6 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ペン・消しゴムの描画処理
         if (!isDrawing || isStampMode) return;
+
         doodleCtx.lineTo(pos.x, pos.y);
         doodleCtx.lineCap = 'round';
         doodleCtx.lineJoin = 'round';
@@ -715,6 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             html += '</div>';
             openModal(html);
+
             document.querySelectorAll('.color-chip-wrapper').forEach(chip => {
                 chip.addEventListener('click', (e) => {
                     currentColor = e.currentTarget.getAttribute('data-color');
@@ -728,12 +737,13 @@ document.addEventListener('DOMContentLoaded', () => {
         toolSize.addEventListener('click', () => {
             isEraser = false; isStampMode = false; selectedStampIndex = -1; redrawCanvas(); updateActiveTool(toolSize);
             let html = `<p style="text-align:center; font-weight:bold; margin-bottom:15px;">ペンの太さ</p>
-                <div style="display:flex; justify-content:space-around;">
-                    <button class="btn size-select-btn secondary" data-size="10">細</button>
-                    <button class="btn size-select-btn primary" data-size="25">中</button>
-                    <button class="btn size-select-btn secondary" data-size="45">太</button>
-                </div>`;
+            <div style="display:flex; justify-content:space-around;">
+                <button class="btn size-select-btn secondary" data-size="10">細</button>
+                <button class="btn size-select-btn primary" data-size="25">中</button>
+                <button class="btn size-select-btn secondary" data-size="45">太</button>
+            </div>`;
             openModal(html);
+
             document.querySelectorAll('.size-select-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     penSize = Number(e.currentTarget.getAttribute('data-size'));
@@ -747,11 +757,12 @@ document.addEventListener('DOMContentLoaded', () => {
         toolEraser.addEventListener('click', () => {
             isEraser = true; isStampMode = false; selectedStampIndex = -1; redrawCanvas(); updateActiveTool(toolEraser);
             let html = `<p style="text-align:center; font-weight:bold; margin-bottom:15px;">消しゴムの太さ</p>
-                <div style="display:flex; justify-content:space-around;">
-                    <button class="btn eraser-size-btn primary" data-size="15">中</button>
-                    <button class="btn eraser-size-btn secondary" data-size="40">太</button>
-                </div>`;
+            <div style="display:flex; justify-content:space-around;">
+                <button class="btn eraser-size-btn primary" data-size="15">中</button>
+                <button class="btn eraser-size-btn secondary" data-size="40">太</button>
+            </div>`;
             openModal(html);
+
             document.querySelectorAll('.eraser-size-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     eraserSize = Number(e.currentTarget.getAttribute('data-size'));
@@ -769,6 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
             stamps.forEach(s => { html += `<div class="stamp-item" data-stamp="${s}">${s}</div>`; });
             html += '</div>';
             openModal(html);
+
             document.querySelectorAll('.stamp-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     selectedStamp = e.target.getAttribute('data-stamp');
@@ -819,6 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderAlbumGrid() {
         if (!albumGrid) return;
         albumGrid.innerHTML = '';
+
         if (albumPhotos.length === 0) {
             albumGrid.innerHTML = '<p style="grid-column: span 4; text-align: center; color: #888; font-size: 0.8rem; padding: 20px;">写真がありません</p>';
             return;
@@ -839,7 +852,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', () => lightboxModal.classList.remove('active'));
-    
+
     if (lightboxDownloadBtn) {
         lightboxDownloadBtn.addEventListener('click', () => {
             if (!currentSelectedAlbumItem) return;
@@ -861,6 +874,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
     // ★ アルバムリセット（全削除）ボタンの処理
     const albumResetBtn = document.getElementById('album-reset-btn');
     if (albumResetBtn) {
@@ -880,5 +894,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 初期起動
     switchScreen(cameraContainer);
-    startCamera();
 });
