@@ -891,6 +891,126 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+// --- タイマー関連の要素取得 ---
+const designTimerSelect = document.getElementById('design-timer-select');
+const designTimerDisplay = document.getElementById('design-timer-display');
+const designTimerToggleBtn = document.getElementById('design-timer-toggle-btn');
+const designTimerOverlay = document.getElementById('design-timer-flash-overlay');
+
+let designTimerInterval = null;
+let designTimeRemaining = 60;
+let isDesignTimerRunning = false;
+
+// Web Audio APIによる効果音再生（ピッ音）
+function playBeepSound(isHigh = false) {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.value = isHigh ? 880 : 440; // 4秒前は440Hz、完了時は880Hz
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch (e) {
+    console.warn('AudioContextエラー:', e);
+  }
+}
+
+// 表示フォーマットの更新 (例: 01:30)
+function updateTimerDisplay(seconds) {
+  const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const s = String(seconds % 60).padStart(2, '0');
+  if (designTimerDisplay) designTimerDisplay.textContent = `${m}:${s}`;
+}
+
+// タイマー停止・リセット
+function resetDesignTimer() {
+  clearInterval(designTimerInterval);
+  designTimerInterval = null;
+  isDesignTimerRunning = false;
+  designTimeRemaining = parseInt(designTimerSelect.value, 10) || 60;
+  updateTimerDisplay(designTimeRemaining);
+  if (designTimerToggleBtn) designTimerToggleBtn.textContent = 'スタート';
+  
+  // オーバーレイのアニメーション解除
+  if (designTimerOverlay) {
+    designTimerOverlay.classList.remove('flash-warning', 'flash-timeout');
+    designTimerOverlay.style.opacity = '0';
+  }
+}
+
+// タイマーカウントダウン処理
+function startDesignTimer() {
+  if (isDesignTimerRunning) return;
+  isDesignTimerRunning = true;
+  if (designTimerToggleBtn) designTimerToggleBtn.textContent = 'ストップ';
+
+  designTimerInterval = setInterval(() => {
+    designTimeRemaining--;
+    updateTimerDisplay(designTimeRemaining);
+
+    const active = getActiveldol();
+    const frameColor = active.color || '#ffffff';
+
+    // ① 残り10秒前：画面全体がフレームカラーで点滅開始
+    if (designTimeRemaining <= 10 && designTimeRemaining > 0) {
+      if (designTimerOverlay) {
+        designTimerOverlay.style.backgroundColor = frameColor;
+        designTimerOverlay.classList.add('flash-warning');
+      }
+    }
+
+    // ② 残り4秒前～1秒前：ピッピッ音再生
+    if (designTimeRemaining <= 4 && designTimeRemaining > 0) {
+      playBeepSound(false);
+    }
+
+    // ③ タイムアップ（0秒）: 無音で全画面点滅（完了ボタンを押すまで継続）
+    if (designTimeRemaining <= 0) {
+      clearInterval(designTimerInterval);
+      playBeepSound(true); // 完了時の合図音
+      if (designTimerOverlay) {
+        designTimerOverlay.classList.remove('flash-warning');
+        designTimerOverlay.classList.add('flash-timeout');
+      }
+    }
+  }, 1000);
+}
+
+// スタート/ストップ ボタンの挙動
+if (designTimerToggleBtn) {
+  designTimerToggleBtn.addEventListener('click', () => {
+    if (isDesignTimerRunning) {
+      // ストップ時
+      resetDesignTimer();
+    } else {
+      // スタート時
+      startDesignTimer();
+    }
+  });
+}
+
+// タイマー時間の変更時
+if (designTimerSelect) {
+  designTimerSelect.addEventListener('change', () => {
+    resetDesignTimer();
+  });
+}
+
+// 完了ボタン（`editorCompleteBtn`）が押されたらタイマーをリセットして停止
+if (editorCompleteBtn) {
+  editorCompleteBtn.addEventListener('click', () => {
+    resetDesignTimer();
+  });
+}
 
     // 初期起動
     switchScreen(cameraContainer)
