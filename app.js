@@ -1036,8 +1036,7 @@ if (editorCompleteBtn) {
     resetDesignTimer();
   });
 }
-
-    // 初期起動
-    switchScreen(cameraContainer)
+    
+// 初期起動
+switchScreen(cameraContainer);
 startCamera();
-});
