@@ -1030,9 +1030,9 @@ if (designTimerSelect) {
 }
 
 // 完了ボタン（editorCompleteBtn）を押したときもタイマーをリセット
-const editorCompleteBtn = document.getElementById('editor-complete-btn');
-if (editorCompleteBtn) {
-  editorCompleteBtn.addEventListener('click', () => {
+const existingCompleteBtn = document.getElementById('editor-complete-btn');
+if (existingCompleteBtn) {
+  existingCompleteBtn.addEventListener('click', () => {
     resetDesignTimer();
   });
 }
