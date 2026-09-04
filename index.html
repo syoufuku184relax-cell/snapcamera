@@ -40,7 +40,20 @@
     </div>
 
     <!-- 3. デザイン・編集画面 -->
-    <div id="editor-container" class="screen">
+<div id="editor-container" class="screen">
+    <!-- デザインタイマー用表示部 -->
+<div id="design-timer-container" class="design-timer-panel">
+  <select id="design-timer-select" class="design-timer-select">
+    <option value="60">1分</option>
+    <option value="90">1分半</option>
+    <option value="120">2分</option>
+  </select>
+  <div id="design-timer-display" class="design-timer-display">01:00</div>
+  <button id="design-timer-toggle-btn" class="btn primary design-timer-btn">スタート</button>
+</div>
+
+<!-- 満了時・警告時の画面点滅用オーバーレイ -->
+<div id="design-timer-flash-overlay" class="design-timer-overlay"></div>
         <div class="canvas-wrapper">
             <canvas id="paint-canvas"></canvas>
         </div>
