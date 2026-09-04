@@ -1029,14 +1029,13 @@ if (designTimerSelect) {
   });
 }
 
-// 完了ボタン（editorCompleteBtn）を押したときもタイマーをリセット
-const existingCompleteBtn = document.getElementById('editor-complete-btn');
-if (existingCompleteBtn) {
-  existingCompleteBtn.addEventListener('click', () => {
+// 完了ボタン（既存のeditorCompleteBtn変数を使用）
+if (typeof editorCompleteBtn !== 'undefined' && editorCompleteBtn) {
+  editorCompleteBtn.addEventListener('click', () => {
     resetDesignTimer();
   });
 }
-    
+
 // 初期起動
 switchScreen(cameraContainer);
 startCamera();
