@@ -1,47 +1,45 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>推し活チェキカメラ</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>推し活チェキカメラ</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 1. 撮影画面 -->
-    <div id="camera-container" class="screen active">
-        <video id="camera-stream" autoplay playsinline muted></video>
-        <div id="countdown-overlay"></div>
-        <div id="active-idol-badge">選択: なし</div>
+<!-- 1. 撮影画面 -->
+<div id="camera-container" class="screen active">
+  <video id="camera-stream" autoplay playsinline muted></video>
+  <div id="countdown-overlay"></div>
+  <div id="active-idol-badge">選択: なし</div>
+  <!-- 上部コントロールアイコン -->
+  <div class="camera-controls-top">
+    <button id="settings-btn" class="icon-btn" title="設定">★</button>
+    <button id="album-open-btn" class="icon-btn" title="アルバム">🖼️</button>
+    <button id="timer-btn" class="icon-btn" title="タイマー">⏱️ <span id="timer-badge">オフ</span></button>
+    <button id="flash-btn" class="icon-btn" title="フラッシュ">⚡</button>
+    <button id="switch-camera-btn" class="icon-btn" title="カメラ切替">🔄</button>
+  </div>
+  <!-- 下部シャッターボタン -->
+  <div class="camera-controls-bottom">
+    <button id="capture-btn" class="shutter-btn"></button>
+  </div>
+</div>
 
-        <!-- 上部コントロールアイコン -->
-        <div class="camera-controls-top">
-            <button id="settings-btn" class="icon-btn" title="設定">⚙️</button>
-            <button id="album-open-btn" class="icon-btn" title="アルバム">🖼️</button>
-            <button id="timer-btn" class="icon-btn" title="タイマー">⏱️<span id="timer-badge">オフ</span></button>
-            <button id="flash-btn" class="icon-btn" title="フラッシュ">⚡</button>
-            <button id="switch-camera-btn" class="icon-btn" title="カメラ切替">🔄</button>
-        </div>
-
-        <!-- 下部シャッターボタン -->
-        <div class="camera-controls-bottom">
-            <button id="capture-btn" class="shutter-btn"></button>
-        </div>
-    </div>
-
-    <!-- 2. 撮影プレビュー画面 -->
-    <div id="capture-preview-container" class="screen">
-        <div class="preview-box">
-            <img id="capture-preview-img" alt="撮影写真プレビュー">
-        </div>
-        <div class="preview-controls">
-            <button id="capture-retake-btn" class="btn secondary">撮り直す</button>
-            <button id="capture-ok-btn" class="btn primary">アルバムに保存してデザインへ</button>
-        </div>
-    </div>
+<!-- 2. 撮影プレビュー画面 -->
+<div id="capture-preview-container" class="screen">
+  <div class="preview-box">
+    <img id="capture-preview-img" alt="撮影写真プレビュー">
+  </div>
+  <div class="preview-controls">
+    <button id="capture-retake-btn" class="btn secondary">撮り直す</button>
+    <button id="capture-ok-btn" class="btn primary">アルバムに保存してデザインへ</button>
+  </div>
+</div>
 
 <!-- 3. デザイン・編集画面 -->
 <div id="editor-container" class="screen">
-  <!-- デザインタイマー用表示部 -->
+  <!-- タイマー用表示部 -->
   <div id="design-timer-container" class="design-timer-panel">
     <select id="design-timer-select" class="design-timer-select">
       <option value="60">1分</option>
@@ -73,56 +71,50 @@
 </div>
 
 <!-- 4. デザイン完成プレビュー画面 -->
+<div id="design-preview-container" class="screen">
+  <div class="preview-box">
+    <img id="design-preview-img" alt="完成デザインプレビュー">
+  </div>
+  <div class="preview-controls">
+    <button id="design-redraw-btn" class="btn secondary">描き直す</button>
+    <button id="design-save-btn" class="btn primary">アルバムに保存</button>
+  </div>
+</div>
 
+<!-- 5. アルバム画面 -->
+<div id="album-container" class="screen">
+  <div class="album-header">
+    <button id="album-back-btn" class="icon-btn">戻る</button>
+    <h2>チェキアルバム</h2>
+    <button id="album-reset-btn" class="btn danger" style="padding: 6px 12px; font-size: 0.75rem;">リセット</button>
+  </div>
+  <div id="album-grid" class="album-grid"></div>
+</div>
 
-    <!-- 4. デザイン完成プレビュー画面 -->
-    <div id="design-preview-container" class="screen">
-        <div class="preview-box">
-            <img id="design-preview-img" alt="完成デザインプレビュー">
-        </div>
-        <div class="preview-controls">
-            <button id="design-redraw-btn" class="btn secondary">描き直す</button>
-            <button id="design-save-btn" class="btn primary">アルバムに保存</button>
-        </div>
+<!-- 6. 全画面表示モーダル (ライトボックス) -->
+<div id="lightbox-modal" class="lightbox-overlay">
+  <button id="lightbox-close-btn" class="lightbox-close">×</button>
+  <div class="lightbox-content">
+    <img id="lightbox-img" src="" alt="拡大表示">
+    <div id="lightbox-info" style="font-size:0.8rem; color:#ccc; margin-top:8px;"></div>
+    <div class="lightbox-actions">
+      <button id="lightbox-download-btn" class="btn primary">ダウンロード</button>
+      <button id="lightbox-delete-btn" class="btn danger">削除</button>
     </div>
+  </div>
+</div>
 
-       <!-- 5. アルバム画面 -->
-    <div id="album-container" class="screen">
-        <div class="album-header">
-            <button id="album-back-btn" class="icon-btn">← 戻る</button>
-            <h2>チェキアルバム</h2>
-            <!-- ★ リセットボタンを追加 -->
-            <button id="album-reset-btn" class="btn danger" style="padding: 6px 12px; font-size: 0.75rem;">リセット</button>
-        </div>
-        <div id="album-grid" class="album-grid"></div>
+<!-- 7. 設定・ダイアログ用モーダル -->
+<div id="modal-overlay" class="modal-overlay">
+  <div class="modal-card">
+    <button id="modal-close-btn" class="modal-close">×</button>
+    <div id="modal-body"></div>
+    <div class="modal-footer" style="margin-top: 15px; text-align: center;">
+      <button id="delete-group-btn" class="btn danger" style="padding: 6px 12px; font-size: 0.8rem;">グループ名を削除</button>
     </div>
+  </div>
+</div>
 
-
-    <!-- 6. 全画面表示モーダル (ライトボックス) -->
-    <div id="lightbox-modal" class="lightbox-overlay">
-        <button id="lightbox-close-btn" class="lightbox-close">✕</button>
-        <div class="lightbox-content">
-            <img id="lightbox-img" src="" alt="拡大表示">
-            <div id="lightbox-info" style="font-size:0.8rem; color:#ccc; margin-top:8px;"></div>
-            <div class="lightbox-actions">
-                <button id="lightbox-download-btn" class="btn primary">ダウンロード</button>
-                <button id="lightbox-delete-btn" class="btn danger">削除</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 7. 設定・ダイアログ用モーダル -->
-    <div id="modal-overlay" class="modal-overlay">
-        <div class="modal-card">
-            <button id="modal-close-btn" class="modal-close">✕</button>
-            <div id="modal-body"></div>
-            <!-- ★ グループ名の削除ボタンを追加 -->
-            <div class="modal-footer" style="margin-top: 15px; text-align: center;">
-                <button id="delete-group-btn" class="btn danger" style="padding: 6px 12px; font-size: 0.8rem;">グループ名を削除</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
