@@ -719,7 +719,7 @@ document.addEventListener('DOMContentLoaded', () => {
         char: selectedStamp,
         x: pos.x,
         y: pos.y,
-        size: 90
+        size: 135
       });
       selectedStampIndex = placedStamps.length - 1;
       redrawCanvas();
