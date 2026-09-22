@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const btnX = s.x + half + 10;
       const btnY = s.y - half - 10;
       const dist = Math.hypot(pos.x - btnX, pos.y - btnY);
-      if (dist <= 30) {
+      if (dist <= 45) {
         placedStamps.splice(selectedStampIndex, 1);
         selectedStampIndex = -1;
         redrawCanvas();
